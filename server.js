@@ -1,16 +1,17 @@
-// DeepButterfly Realm 2.0 Server 💜
+// DeepButterfly Realm 2.1 Server 💜
 // Features:
-// - Registrierung + Login (Name + Passwort)
+// - Registrierung + Login (username+passwort)
 // - Rollen: owner 👑, coOwner 👑, admin 👑, user
-//   * Der allererste Account ist owner
+//   * Erster Account wird owner
 //   * owner kann andere zu coOwner machen
-//   * owner und coOwner/admin können kicken & bannen
-// - Bannliste: Gebannte User können nicht mehr rein
-// - Online-Liste mit Live-Status
-// - Raum mit Avataren (x,y)
-// - Sitzplätze: vordefinierte "chairs", User kann sich auf Platz setzen
-// - Chat Broadcast über Socket.io
-// - Spiele-Events (TicTacToe / Memory vorbereitet, Logik kann später wachsen)
+//   * owner kann coOwner wieder zurück zu user machen
+// - Kick / Bann (owner + coOwner + admin dürfen kicken/bannen, aber niemand darf owner anfassen)
+// - Bannliste: Gebannte können nicht mehr rein
+// - Online-Liste in Echtzeit
+// - Raum mit Avataren (x,y) und Sitzplätzen
+// - Chat mit Socket.io Broadcast
+// - server sendet bei jeder Nachricht auch senderLang (Sprache des Senders)
+// - Spielstart-Events (TicTacToe / Memory)
 
 const express = require("express");
 const path = require("path");
@@ -23,30 +24,30 @@ const { Server } = require("socket.io");
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = "deepbutterfly-secret-change-this";
 
-// App + Server
+// App Setup
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname))); // serve index.html etc.
+// Statische Dateien ausliefern (index.html usw.)
+app.use(express.static(path.join(__dirname)));
 
 const http = httpServer(app);
 const io = new Server(http, {
   cors: { origin: "*" }
 });
 
-// "In-Memory Datenbank" (wird gelöscht wenn Server schläft in Free-Tier)
+// "Speicher" im RAM (Free-Host: wird gelöscht wenn Server neu startet)
 const users = {};          // username -> { username, passHash, avatar, color, language, theme, role }
 const banned = {};         // username -> true
 const socketsByUser = {};  // username -> Set(socketId)
 const userBySocket = {};   // socketId -> username
-const roomState = {};      // username -> { x,y,seatIndex (optional), avatar,color,role }
+const roomState = {};      // username -> { x,y,seatIndex, avatar,color,role }
 const seats = [
   { x: 60,  y: 110 },
   { x: 120, y: 110 },
   { x: 180, y: 110 },
   { x: 240, y: 110 }
 ];
-// seatIndex bedeutet: sitzt auf seats[seatIndex], dann x/y folgen dem Sitzpunkt.
 
 // Hilfsfunktionen
 function publicUser(u) {
@@ -70,14 +71,19 @@ function isAdmin(u) {
   return u && (u.role === "admin" || isCoOwner(u) || isOwner(u));
 }
 function canPromoteToCoOwner(actor) {
-  // nur owner darf coOwner vergeben
+  // nur owner darf CoOwner vergeben
+  return isOwner(actor);
+}
+function canDemoteFromCoOwner(actor) {
+  // nur owner darf CoOwner zurückstufen
   return isOwner(actor);
 }
 function canKickBan(actor) {
-  // owner, coOwner und admin dürfen kicken/bannen
+  // owner, coOwner, admin dürfen kicken/bannen
   return isAdmin(actor);
 }
 
+// nach jeder Änderung -> an alle schicken
 function broadcastUserListAndRoom() {
   const list = Object.keys(socketsByUser).map(username => publicUser(users[username]));
   io.emit("userlist", list);
@@ -87,8 +93,8 @@ function broadcastUserListAndRoom() {
   for (const uname in roomState) {
     const entry = { ...roomState[uname] };
     if (typeof entry.seatIndex === "number" && seats[entry.seatIndex]) {
-      entry.x = seats[entry.seatIndex].x;
-      entry.y = seats[entry.seatIndex].y;
+        entry.x = seats[entry.seatIndex].x;
+        entry.y = seats[entry.seatIndex].y;
     }
     stateToSend[uname] = entry;
   }
@@ -123,7 +129,7 @@ app.post("/register", async (req, res) => {
     role
   };
 
-  // Raum initialisieren
+  // Raum initial
   roomState[username] = {
     x: Math.floor(Math.random() * 220) + 20,
     y: Math.floor(Math.random() * 100) + 20,
@@ -162,7 +168,6 @@ app.post("/login", async (req, res) => {
 
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" });
 
-  // Raum fallback falls nicht existiert
   if (!roomState[username]) {
     roomState[username] = {
       x: Math.floor(Math.random() * 220) + 20,
@@ -194,7 +199,6 @@ app.post("/profile", (req, res) => {
     if (language !== undefined) u.language = language;
     if (theme !== undefined) u.theme = theme;
 
-    // Raum sync
     if (roomState[u.username]) {
       roomState[u.username].avatar = u.avatar;
       roomState[u.username].color = u.color;
@@ -202,13 +206,14 @@ app.post("/profile", (req, res) => {
     }
 
     broadcastUserListAndRoom();
+
     return res.json({ ok: true, profile: publicUser(u) });
   } catch (e) {
     return res.status(401).json({ error: "token ungültig" });
   }
 });
 
-// Socket.io
+// Socket-Verbindungen
 io.on("connection", (socket) => {
   console.log("Verbunden:", socket.id);
 
@@ -225,11 +230,9 @@ io.on("connection", (socket) => {
       }
 
       userBySocket[socket.id] = u.username;
-
       if (!socketsByUser[u.username]) socketsByUser[u.username] = new Set();
       socketsByUser[u.username].add(socket.id);
 
-      // falls kein RaumState
       if (!roomState[u.username]) {
         roomState[u.username] = {
           x: Math.floor(Math.random() * 220) + 20,
@@ -250,8 +253,7 @@ io.on("connection", (socket) => {
         role: "system",
         text: u.username + " ist jetzt online 💫",
         timestamp: Date.now(),
-        originalLang: "system",
-        translatedLang: "system"
+        senderLang: "system"
       });
 
     } catch (e) {
@@ -326,9 +328,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Chatnachricht
+  // Chatnachricht senden -> Server broadcastet + hängt senderLang an
   socket.on("sendMessage", (payload) => {
-    // payload: { token, text, originalLang }
+    // payload: { token, text }
     if (!payload || !payload.token || !payload.text) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
@@ -342,14 +344,14 @@ io.on("connection", (socket) => {
         role: u.role,
         text: payload.text,
         timestamp: Date.now(),
-        originalLang: payload.originalLang || "auto"
+        senderLang: u.language || "auto"
       });
     } catch (e) {
       console.log("sendMessage fail", e);
     }
   });
 
-  // Owner/CoOwner/Admin Aktionen
+  // Mitbesitzer vergeben
   socket.on("promoteCoOwner", (payload) => {
     // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
@@ -377,13 +379,50 @@ io.on("connection", (socket) => {
         role: "system",
         text: payload.targetUser + " ist jetzt Mitbesitzer 👑",
         timestamp: Date.now(),
-        originalLang: "system"
+        senderLang: "system"
       });
     } catch (e) {
       console.log("promoteCoOwner fail", e);
     }
   });
 
+  // Mitbesitzer entfernen (zurück zu user)
+  socket.on("demoteToUser", (payload) => {
+    // { token, targetUser }
+    if (!payload || !payload.token || !payload.targetUser) return;
+    try {
+      const data = jwt.verify(payload.token, JWT_SECRET);
+      const acting = users[data.username];
+      if (!acting) return;
+      // nur owner darf coOwner runterstufen
+      if (!canDemoteFromCoOwner(acting)) return;
+
+      const t = users[payload.targetUser];
+      if (!t) return;
+      if (isOwner(t)) return; // owner bleibt owner
+      t.role = "user";
+
+      if (roomState[t.username]) {
+        roomState[t.username].role = t.role;
+      }
+
+      broadcastUserListAndRoom();
+
+      io.emit("chatMessage", {
+        from: "System",
+        color: "#ff4dfd",
+        avatar: "👑",
+        role: "system",
+        text: payload.targetUser + " ist kein Mitbesitzer mehr.",
+        timestamp: Date.now(),
+        senderLang: "system"
+      });
+    } catch (e) {
+      console.log("demoteToUser fail", e);
+    }
+  });
+
+  // Kick
   socket.on("kickUser", (payload) => {
     // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
@@ -396,7 +435,7 @@ io.on("connection", (socket) => {
       const targetName = payload.targetUser;
       const targetUser = users[targetName];
       if (!targetUser) return;
-      if (isOwner(targetUser)) return; // owner kann nicht gekickt werden
+      if (isOwner(targetUser)) return; // owner nicht kicken
 
       if (socketsByUser[targetName]) {
         for (const sid of socketsByUser[targetName]) {
@@ -412,13 +451,14 @@ io.on("connection", (socket) => {
         role: "system",
         text: targetName + " wurde gekickt.",
         timestamp: Date.now(),
-        originalLang: "system"
+        senderLang: "system"
       });
     } catch (e) {
       console.log("kickUser fail", e);
     }
   });
 
+  // Bann
   socket.on("banUser", (payload) => {
     // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
@@ -449,7 +489,7 @@ io.on("connection", (socket) => {
         role: "system",
         text: targetName + " wurde gebannt.",
         timestamp: Date.now(),
-        originalLang: "system"
+        senderLang: "system"
       });
     } catch (e) {
       console.log("banUser fail", e);
@@ -464,7 +504,7 @@ io.on("connection", (socket) => {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const acting = users[data.username];
       if (!acting) return;
-      // Nur Admin/Owner/CoOwner dürfen Spiele starten
+      // nur Admin/Owner/CoOwner
       if (!isAdmin(acting)) return;
 
       io.emit("gameStarted", {
@@ -499,7 +539,7 @@ io.on("connection", (socket) => {
         role: "system",
         text: uname + " hat den Raum verlassen.",
         timestamp: Date.now(),
-        originalLang: "system"
+        senderLang: "system"
       });
     }
 
@@ -507,9 +547,9 @@ io.on("connection", (socket) => {
   });
 });
 
+// Server starten
 http.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT);
   console.log("Bereit ✨");
 });
-
 
