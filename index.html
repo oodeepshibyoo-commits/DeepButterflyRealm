@@ -14,7 +14,63 @@ body {
   color:#fff;
   overflow:hidden;
 }
-/* (dein restliches CSS bleibt hier unverändert) */
+#topbar {
+  position:fixed; top:0; left:0; right:0;
+  height:50px; display:flex; align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  background:rgba(30,0,40,0.7);
+  border-bottom:1px solid #ff3eb5;
+  box-shadow:0 0 10px #ff3eb5;
+}
+#clockTop { color:#ff3eb5; font-weight:bold; }
+#main { display:flex; height:calc(100vh - 50px); margin-top:50px; }
+#sidebar {
+  width:250px;
+  background:rgba(20,0,40,0.7);
+  border-right:1px solid #ff3eb5;
+  display:flex; flex-direction:column; padding:10px;
+}
+#sidebar.hidden { display:none; }
+#sidebar h2 { color:#ff3eb5; text-align:center; }
+#chatArea { flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:10px; }
+#chat { flex:1; overflow-y:auto; padding-right:10px; }
+.message {
+  background:rgba(255,62,181,0.1);
+  border:1px solid rgba(255,62,181,0.3);
+  margin:5px 0; padding:6px 10px;
+  border-radius:10px;
+}
+.message strong { color:#ff3eb5; }
+.meta { font-size:0.8em; color:#aaa; }
+#msgInput {
+  width:100%; padding:10px;
+  background:#15001e; color:#fff;
+  border:1px solid #ff3eb5;
+  border-radius:10px; outline:none;
+}
+#clockBottom { color:#ff3eb5; text-align:right; font-size:0.9em; margin-top:3px; }
+button {
+  background:#ff3eb5; color:#fff; border:none;
+  border-radius:10px; padding:6px 12px; margin:3px 0;
+  cursor:pointer; font-weight:bold;
+}
+button:hover { background:#ff73cc; }
+
+/* Avatar-Spielbereich */
+#gameArea {
+  position:relative; width:100%; height:300px;
+  background:rgba(255,62,181,0.05);
+  border:1px solid rgba(255,62,181,0.3);
+  border-radius:15px; margin-top:10px; overflow:hidden;
+}
+.avatar {
+  position:absolute; width:50px; height:50px;
+  border-radius:50%;
+  background:radial-gradient(circle,#ff3eb5,#900090);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3em;
+}
 </style>
 </head>
 
@@ -48,90 +104,6 @@ body {
   <button id="loginBtn">Betreten 💫</button>
 </div>
 
-}
-#topbar {
-  position:fixed; top:0; left:0; right:0;
-  height:50px; display:flex; align-items:center;
-  justify-content:space-between;
-  padding:0 20px;
-  background:rgba(30,0,40,0.7);
-  border-bottom:1px solid #ff3eb5;
-  box-shadow:0 0 10px #ff3eb5;
-}
-#clockTop {
-  color:#ff3eb5;
-  font-weight:bold;
-}
-#main {
-  display:flex;
-  height:calc(100vh - 50px);
-  margin-top:50px;
-}
-#sidebar {
-  width:250px;
-  background:rgba(20,0,40,0.7);
-  border-right:1px solid #ff3eb5;
-  display:flex;
-  flex-direction:column;
-  padding:10px;
-}
-#sidebar.hidden { display:none; }
-#sidebar h2 { color:#ff3eb5; text-align:center; }
-#chatArea {
-  flex:1; display:flex; flex-direction:column;
-  justify-content:space-between;
-  padding:10px;
-}
-#chat {
-  flex:1; overflow-y:auto; padding-right:10px;
-}
-.message {
-  background:rgba(255,62,181,0.1);
-  border:1px solid rgba(255,62,181,0.3);
-  margin:5px 0; padding:6px 10px;
-  border-radius:10px;
-}
-.message strong { color:#ff3eb5; }
-.meta { font-size:0.8em; color:#aaa; }
-#msgInput {
-  width:100%; padding:10px;
-  background:#15001e; color:#fff;
-  border:1px solid #ff3eb5;
-  border-radius:10px;
-  outline:none;
-}
-#clockBottom {
-  color:#ff3eb5; text-align:right;
-  font-size:0.9em;
-  margin-top:3px;
-}
-button {
-  background:#ff3eb5; color:#fff;
-  border:none; border-radius:10px;
-  padding:6px 12px; margin:3px 0;
-  cursor:pointer; font-weight:bold;
-}
-button:hover { background:#ff73cc; }
-
-/* Avatar-Spielbereich */
-#gameArea {
-  position:relative; width:100%; height:300px;
-  background:rgba(255,62,181,0.05);
-  border:1px solid rgba(255,62,181,0.3);
-  border-radius:15px; margin-top:10px;
-  overflow:hidden;
-}
-.avatar {
-  position:absolute; width:50px; height:50px;
-  border-radius:50%;
-  background:radial-gradient(circle,#ff3eb5,#900090);
-  display:flex; align-items:center; justify-content:center;
-  font-size:1.3em;
-}
-</style>
-</head>
-
-<body>
 <div id="topbar">
   <div>🦋 <b>DeepButterflyRealm</b></div>
   <div id="clockTop"></div>
@@ -160,8 +132,7 @@ function updateClocks(){
   document.getElementById("clockTop").textContent=t;
   document.getElementById("clockBottom").textContent=t;
 }
-setInterval(updateClocks,1000);
-updateClocks();
+setInterval(updateClocks,1000); updateClocks();
 
 /* === 🔗 Socket Verbindung === */
 const socket=io();
@@ -186,11 +157,18 @@ let userLang="de";
 let userColor="#ff3eb5";
 let isOwner=false;
 
-/* Simpler Login */
-username=prompt("Bitte gib deinen Namen ein:");
-userLang=prompt("Sprache (z.B. de, hu, en):")||"de";
-socket.emit("join",{user:username,lang:userLang,color:userColor});
+/* === 🦋 Login === */
+document.getElementById("loginBtn").addEventListener("click",()=>{
+  username=document.getElementById("loginName").value.trim();
+  userLang=document.getElementById("loginLang").value;
+  if(!username){alert("Bitte gib einen Namen ein 🦋");return;}
+  document.getElementById("loginBox").style.display="none";
+  socket.connect();
+  socket.emit("join",{user:username,lang:userLang,color:userColor});
+  socket.emit("spawn",{user:username});
+});
 
+/* === Nachrichten === */
 document.getElementById("msgInput").addEventListener("keydown",async e=>{
   if(e.key==="Enter"&&e.target.value.trim()!==""){
     const text=e.target.value.trim();
@@ -199,7 +177,7 @@ document.getElementById("msgInput").addEventListener("keydown",async e=>{
   }
 });
 
-/* === 📥 Eingehende Nachrichten === */
+/* === Eingehende Nachrichten === */
 socket.on("chat",async msg=>{
   const myLang=userLang;
   const translated=await translateText(msg.text,myLang);
@@ -211,10 +189,11 @@ socket.on("chat",async msg=>{
   chat.appendChild(el);
   chat.scrollTop=chat.scrollHeight;
 });
-/* === 🧍 Online-Liste aktualisieren === */
+
+/* === Online-Liste === */
 socket.on("userlist", list=>{
   const sidebar=document.getElementById("sidebar");
-  if(!username)return; // Nicht eingeloggt → Liste bleibt verborgen
+  if(!username)return;
   sidebar.classList.remove("hidden");
   const ul=document.getElementById("userList");
   ul.innerHTML="";
@@ -225,13 +204,11 @@ socket.on("userlist", list=>{
   });
 });
 
-/* === 🦋 Avatar-Bereich === */
+/* === Avatar-Bereich === */
 const gameArea=document.createElement("div");
 gameArea.id="gameArea";
 document.getElementById("chatArea").prepend(gameArea);
-
 const avatars={};
-
 socket.on("spawn",user=>{
   if(!avatars[user.user]){
     const el=document.createElement("div");
@@ -243,14 +220,12 @@ socket.on("spawn",user=>{
     avatars[user.user]=el;
   }
 });
-
 socket.on("move",data=>{
   if(avatars[data.user]){
     avatars[data.user].style.left=data.x+"px";
     avatars[data.user].style.top=data.y+"px";
   }
 });
-
 document.addEventListener("keydown",e=>{
   if(!avatars[username])return;
   const el=avatars[username];
@@ -260,12 +235,11 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowRight")x+=10;
   if(e.key==="ArrowUp")y-=10;
   if(e.key==="ArrowDown")y+=10;
-  el.style.left=x+"px";
-  el.style.top=y+"px";
+  el.style.left=x+"px"; el.style.top=y+"px";
   socket.emit("move",{user:username,x,y});
 });
 
-/* === 🎮 Einfaches Tic-Tac-Toe === */
+/* === TicTacToe === */
 let tttBoard=null;
 function createTicTacToe(){
   if(document.getElementById("ttt"))return;
@@ -302,7 +276,6 @@ document.getElementById("startGameBtn").addEventListener("click",()=>{
   createTicTacToe();
   socket.emit("ttt-start");
 });
-
 socket.on("ttt-start",()=>createTicTacToe());
 socket.on("ttt-move",data=>{
   if(tttBoard){
@@ -311,37 +284,12 @@ socket.on("ttt-move",data=>{
   }
 });
 
-/* === 👑 Owner & Admin-Befehle === */
-socket.on("system",msg=>{
-  const chat=document.getElementById("chat");
-  const el=document.createElement("div");
-  el.className="message";
-  el.style.opacity=0.7;
-  el.innerHTML=`<em>${msg}</em>`;
-  chat.appendChild(el);
-});
-/* === 🔐 Logout & Cleanup === */
-window.addEventListener("beforeunload",()=>{
-  socket.emit("leave",{user:username});
-});
+/* === Logout / Sterne === */
+window.addEventListener("beforeunload",()=>{ socket.emit("leave",{user:username}); });
 
-/* === 🦋 Verbindungssignale === */
-socket.on("connect",()=>{
-  socket.emit("spawn",{user:username});
-});
-socket.on("disconnect",()=>{
-  const el=document.createElement("div");
-  el.className="message";
-  el.innerHTML="<em>Verbindung getrennt...</em>";
-  document.getElementById("chat").appendChild(el);
-});
-
-/* === 🎆 Kleine Glitzer-Animation im Hintergrund === */
 const canvas=document.createElement("canvas");
 document.body.appendChild(canvas);
-canvas.style.position="fixed";
-canvas.style.left=0;canvas.style.top=0;
-canvas.style.zIndex="-1";
+canvas.style.position="fixed"; canvas.style.left=0; canvas.style.top=0; canvas.style.zIndex="-1";
 const ctx=canvas.getContext("2d");
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
 window.addEventListener("resize",resize);resize();
@@ -349,28 +297,12 @@ const stars=Array.from({length:80},()=>({x:Math.random()*innerWidth,y:Math.rando
 function drawStars(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#ff3eb5";
-  stars.forEach(s=>{
-    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fill();
-    s.y+=0.3;if(s.y>innerHeight)s.y=0;
-  });
+  stars.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();s.y+=0.3;if(s.y>innerHeight)s.y=0;});
   requestAnimationFrame(drawStars);
 }
 drawStars();
 
-/* === 🩵 Fertigmeldung === */
-console.log("DeepButterflyRealm 🦋 läuft mit Google-Übersetzung, Uhrzeit, Spielen und Avataren.");
+console.log("DeepButterflyRealm 🦋 läuft mit Übersetzung, Avataren, Spielen und Uhrzeit.");
 </script>
 </body>
 </html>
-/* === 🔧 Fix: Nur verbinden, wenn eingeloggt === */
-if (username && username.trim() !== "") {
-  socket.connect();
-  socket.emit("join", { user: username, lang: userLang, color: userColor });
-  socket.emit("spawn", { user: username });
-} else {
-  // Kein Login → Socket bleibt getrennt, keine Fehlermeldung
-  console.log("Bitte melde dich an, um zu chatten 🦋");
-}
-
-
