@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DeepButterfly Realm 2.1 💜👑</title>
+<title>DeepButterfly Realm 3.0 💜👑</title>
 <style>
 /* --- Neon Dark Layout --- */
 body{
@@ -13,12 +13,13 @@ body{
     font-family:Arial,Helvetica,sans-serif;
     display:grid;
     grid-template-columns:260px 1fr;
-    grid-template-rows:auto 220px 1fr auto;
+    grid-template-rows:auto 220px 1fr auto auto; /* extra row for game room */
     grid-template-areas:
         "side head"
         "side room"
         "side chat"
-        "side input";
+        "side input"
+        "side game";
     height:100vh;
     overflow:hidden;
     position:relative;
@@ -364,7 +365,7 @@ main{
     word-break:break-word;
 }
 
-/* UNTEN: Nachricht+Uhrzeit */
+/* UNTEN: Nachricht + Senden */
 footer{
     grid-area:input;
     background:#1a1a24cc;
@@ -415,15 +416,64 @@ footer{
     cursor:not-allowed;
 }
 
-/* GAME AREA */
-#gameArea{
-    border-top:1px solid #6b00ff;
-    margin-top:.5rem;
-    padding-top:.5rem;
+/* GAME ROOM BEREICH */
+#gameRoomWrap{
+    grid-area:game;
+    background:#0f0f14dd;
+    border-top:2px solid #6b00ff;
+    box-shadow:0 -10px 40px rgba(0,255,246,.2),
+               0 0 60px rgba(255,77,253,.2);
+    padding:.75rem;
+    font-size:.7rem;
+    line-height:1.4;
+    overflow-y:auto;
+    max-height:25vh;
+}
+#gameHeaderLine{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:.5rem;
+    color:#00fff6;
+    font-size:.75rem;
+    font-weight:600;
+    text-shadow:0 0 10px #00fff6,0 0 20px #ff4dfd;
+}
+#gameInfo{
     color:#8a8a9f;
     font-size:.7rem;
+    line-height:1.4;
+    white-space:pre-wrap;
+    word-break:break-word;
+    margin-top:.5rem;
+    border:2px solid #6b00ff;
+    border-radius:10px;
+    background:#2a2a38aa;
+    box-shadow:0 0 16px rgba(107,0,255,.4),
+               0 0 32px rgba(0,255,246,.2);
+    padding:.5rem .75rem;
 }
-#ticBtn,#memBtn{
+#gamePlayers{
+    margin-top:.5rem;
+    font-size:.7rem;
+    color:#fff;
+    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
+}
+.playerTag{
+    display:inline-block;
+    background:#2a2a38;
+    border:2px solid #6b00ff;
+    border-radius:8px;
+    padding:.3rem .4rem;
+    margin:.2rem;
+    box-shadow:0 0 12px rgba(107,0,255,.6),
+               0 0 24px rgba(0,255,246,.4);
+    font-size:.7rem;
+    font-weight:600;
+}
+#joinGameBtn,
+#lockGameBtn{
     background:radial-gradient(circle at 20% 20%, #00fff6 0%, #003d3d 60%);
     border:0;
     border-radius:8px;
@@ -440,19 +490,63 @@ footer{
     margin-right:.4rem;
 }
 
-/* ADMIN PANEL */
-#adminPanel{
-    border-top:1px solid #6b00ff;
-    margin-top:.5rem;
-    padding-top:.5rem;
-    color:#8a8a9f;
+/* GAME INVITE POPUP */
+#invitePopup{
+    position:fixed;
+    bottom:90px;
+    right:20px;
+    max-width:240px;
+    background:#1a1a24ee;
+    border:2px solid #6b00ff;
+    border-radius:12px;
+    box-shadow:0 0 20px rgba(107,0,255,.6),
+               0 0 60px rgba(255,77,253,.3),
+               0 0 120px rgba(0,255,246,.3);
+    padding:.75rem;
     font-size:.7rem;
+    line-height:1.4;
+    color:#fff;
+    z-index:99999;
+    display:none;
 }
-#adminPanel .targetName{
+#invitePopupTitle{
+    color:#00fff6;
     font-weight:600;
+    text-shadow:0 0 8px #00fff6,0 0 12px #ff4dfd;
+    margin-bottom:.4rem;
+}
+#invitePopupTxt{
+    color:#fff;
+    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
+    margin-bottom:.5rem;
+    white-space:pre-wrap;
+}
+#inviteYesBtn,
+#inviteNoBtn{
+    background:radial-gradient(circle at 20% 20%, #ff4dfd 0%, #6b00ff 60%);
+    border:0;
+    border-radius:8px;
+    color:#000;
+    font-size:.7rem;
+    font-weight:700;
+    line-height:1.2;
+    padding:.4rem .6rem;
+    cursor:pointer;
+    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
+    box-shadow:0 12px 30px rgba(255,77,253,.45),
+               0 0 20px rgba(0,255,246,.4),
+               0 0 60px rgba(107,0,255,.6);
+    margin-right:.4rem;
+}
+
+/* Pinke Uhr pro Nachricht */
+.msgTime{
+    font-size:.6rem;
+    font-family:Consolas,Menlo,monospace;
     color:#ff4dfd;
     text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-bottom:.5rem;
+    margin-top:.4rem;
+    text-align:right;
 }
 
 /* Hilfetext Sprache */
@@ -475,16 +569,6 @@ footer{
     margin-bottom:.4rem;
     font-size:.7rem;
 }
-
-/* Pinke Uhr pro Nachricht */
-.msgTime{
-    font-size:.6rem;
-    font-family:Consolas,Menlo,monospace;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-top:.4rem;
-    text-align:right;
-}
 </style>
 </head>
 <body>
@@ -492,8 +576,8 @@ footer{
 <div id="clockTop">--:--</div>
 
 <header>
-    <div class="big">DeepButterfly Realm 2.1 💜👑</div>
-    <div class="sub">Multilingual · Owner-Krone · Avatare bewegen · Sitzen · Spiele · Uhrzeit 💖</div>
+    <div class="big">DeepButterfly Realm 3.0 💜👑</div>
+    <div class="sub">Multilingual · Owner-Krone · Avatare · Sitzen · Spiele mit Einladung · Uhrzeit 💖</div>
 </header>
 
 <aside>
@@ -538,7 +622,7 @@ footer{
 5. Wähle deine Sprache.
 6. Klick "Account erstellen".
 
-Der erste Account wird Owner 👑.
+Der erste Account-Name "DeepButterflyMusic" ist immer Owner 👑.
 Owner & CoOwner/Admin können kicken/bannen.
             </div>
         </div>
@@ -571,11 +655,11 @@ Owner & CoOwner/Admin können kicken/bannen.
         <div class="statusLine" id="regStatus"></div>
 
         <!-- SPIELE START PANEL -->
-        <div id="gameArea">
+        <div id="gameAreaSide" style="border-top:1px solid #6b00ff;margin-top:.5rem;padding-top:.5rem;color:#8a8a9f;font-size:.7rem;">
             <strong>🎮 Spiele starten (nur Admin/Owner)</strong><br/>
-            <button id="ticBtn">TicTacToe</button>
-            <button id="memBtn">Memory</button>
-            <div id="gameStatus" class="statusLine"></div>
+            <button class="smallBtn" id="ticBtn">TicTacToe</button>
+            <button class="smallBtn" id="memBtn">Memory</button>
+            <div id="gameStatusSide" class="statusLine"></div>
         </div>
     </div>
 
@@ -606,12 +690,17 @@ Owner & CoOwner/Admin können kicken/bannen.
         <div class="statusLine" id="profileStatus"></div>
 
         <!-- ADMIN PANEL -->
-        <div id="adminPanel" style="display:none;">
-            <div class="targetName">Kein Ziel ausgewählt</div>
+        <div id="adminPanel" style="display:none;border-top:1px solid #6b00ff;margin-top:.5rem;padding-top:.5rem;">
+            <div class="targetName" style="font-weight:600;color:#ff4dfd;text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;margin-bottom:.5rem;">
+                Kein Ziel ausgewählt
+            </div>
+
+            <button class="smallBtn" id="fixOwnerBtn">👑 Owner fixen (nur du)</button>
             <button class="smallBtn" id="makeCoOwnerBtn">👑 Mitbesitzer machen</button>
             <button class="smallBtn" id="removeCoOwnerBtn">💔 Mitbesitzer entfernen</button>
             <button class="smallBtn" id="kickBtn">🚫 Kicken</button>
             <button class="smallBtn" id="banBtn">❌ Bannen</button>
+
             <div class="statusLine" id="adminStatus"></div>
         </div>
     </div>
@@ -644,6 +733,30 @@ Owner & CoOwner/Admin können kicken/bannen.
     <button id="sendBtn" disabled>Senden</button>
 </footer>
 
+<!-- GAME ROOM ANZEIGE UNTEN -->
+<section id="gameRoomWrap">
+    <div id="gameHeaderLine">
+        <div>🕹 Spielraum / Lobby</div>
+        <div>
+            <button id="joinGameBtn" disabled>Mitspielen 💖</button>
+            <button id="lockGameBtn" disabled>Spiel starten / schließen</button>
+        </div>
+    </div>
+
+    <div id="gameInfo">(Kein Spiel aktiv)</div>
+    <div id="gamePlayers"></div>
+</section>
+
+<!-- EINLADUNG POPUP -->
+<div id="invitePopup">
+    <div id="invitePopupTitle">Spiel Einladung 🕹</div>
+    <div id="invitePopupTxt">?</div>
+    <div>
+        <button id="inviteYesBtn">Mitspielen 💖</button>
+        <button id="inviteNoBtn">Nein</button>
+    </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
 // ================== Sprachdaten ==================
@@ -673,8 +786,8 @@ const HELP_TEXT = {
 5. Wähle deine Sprache.
 6. Klick "Account erstellen".
 
-Der erste Account wird Owner 👑.
-Owner & CoOwner/Admin können kicken/bannen.`
+Der Name "DeepButterflyMusic" ist immer Owner 👑.
+Owner / CoOwner / Admin können kicken oder bannen.`
   },
   en: {
     title: "How to join 💜",
@@ -686,8 +799,8 @@ Owner & CoOwner/Admin können kicken/bannen.`
 5. Pick your language.
 6. Click "Create account".
 
-The first account becomes Owner 👑.
-Owner & CoOwner/Admin can kick / ban people.`
+The name "DeepButterflyMusic" is always Owner 👑.
+Owner / CoOwner / Admin can kick or ban.`
   },
   hu: {
     title: "Így tudsz belépni 💜",
@@ -699,10 +812,10 @@ Owner & CoOwner/Admin can kick / ban people.`
 5. Válassz nyelvet.
 6. Kattints: "Fiók létrehozása".
 
-Az első felhasználó lesz az Owner 👑.
-Az Owner / CoOwner / Admin ki tud rúgni vagy tiltani másokat.`
+A "DeepButterflyMusic" név mindig Owner 👑.
+Az Owner / CoOwner / Admin ki tud rúgni vagy tilthat másokat.`
   }
-  // Weitere Sprachen kannst du später hier ergänzen
+  // weitere Sprachen kannst du später ergänzen
 };
 
 // ===== Übersetzungsserver Liste =====
@@ -741,15 +854,13 @@ const helpBoxText    = document.getElementById("helpBoxText");
 const onlineList   = document.getElementById("onlineList");
 const adminPanel   = document.getElementById("adminPanel");
 const adminStatus  = document.getElementById("adminStatus");
+
+const fixOwnerBtn      = document.getElementById("fixOwnerBtn");
 const makeCoOwnerBtn   = document.getElementById("makeCoOwnerBtn");
 const removeCoOwnerBtn = document.getElementById("removeCoOwnerBtn");
-const kickBtn      = document.getElementById("kickBtn");
-const banBtn       = document.getElementById("banBtn");
-const adminTargetEl= adminPanel.querySelector(".targetName");
-
-const ticBtn       = document.getElementById("ticBtn");
-const memBtn       = document.getElementById("memBtn");
-const gameStatus   = document.getElementById("gameStatus");
+const kickBtn          = document.getElementById("kickBtn");
+const banBtn           = document.getElementById("banBtn");
+const adminTargetEl    = adminPanel.querySelector(".targetName");
 
 const roomArea     = document.getElementById("roomArea");
 const messagesEl   = document.getElementById("messages");
@@ -757,16 +868,33 @@ const msgInput     = document.getElementById("msgInput");
 const sendBtn      = document.getElementById("sendBtn");
 const clockTopEl   = document.getElementById("clockTop");
 
+const ticBtn       = document.getElementById("ticBtn");
+const memBtn       = document.getElementById("memBtn");
+const gameStatusSide = document.getElementById("gameStatusSide");
+
+const joinGameBtn  = document.getElementById("joinGameBtn");
+const lockGameBtn  = document.getElementById("lockGameBtn");
+const gameInfoEl   = document.getElementById("gameInfo");
+const gamePlayersEl= document.getElementById("gamePlayers");
+
+const invitePopup      = document.getElementById("invitePopup");
+const invitePopupTitle = document.getElementById("invitePopupTitle");
+const invitePopupTxt   = document.getElementById("invitePopupTxt");
+const inviteYesBtn     = document.getElementById("inviteYesBtn");
+const inviteNoBtn      = document.getElementById("inviteNoBtn");
+
 // ===== STATE =====
 let authToken = null;
 let myProfile = null;
 let dragging  = null; // { username, el, offsetX, offsetY }
 let currentRoom = { avatars: {}, seats: [] };
 let adminTargetUser = null;
+let currentGame = null;
+let lastInvite = null; // {type,host}
 
 // ===== Hilfsfunktionen =====
 
-// Sprachwahl-Selects füllen
+// Alle Sprach-Selects füllen
 function fillLangSelect(sel){
     LANGS.forEach(l=>{
         const o=document.createElement("option");
@@ -803,8 +931,7 @@ function fixGermanQuick(t){
       .replace(/wo bist du+\b/gi,"wo bist du");
 }
 
-// Auto-Übersetzung für Anzeige der Chat-Bubble
-// -> gibt {translatedText, detectedSource}
+// Auto-Übersetzung für Anzeige im Chat
 async function translateAuto(text, targetLang){
     for (const url of TRANSLATE_SERVERS){
         try{
@@ -823,7 +950,7 @@ async function translateAuto(text, targetLang){
             if(data && data.translatedText){
                 return {
                     translatedText:data.translatedText,
-                    detectedSource:"auto" // manche Server geben das nicht zurück korrekt
+                    detectedSource:"auto"
                 };
             }
         }catch(e){}
@@ -834,7 +961,7 @@ async function translateAuto(text, targetLang){
     };
 }
 
-// Nachricht ins Chatfenster einbauen
+// Chatnachricht anzeigen
 async function addMessageBubble(msg){
     // msg = {from,color,avatar,role,text,timestamp,senderLang}
     const isSystem = (msg.from==="System");
@@ -874,13 +1001,13 @@ async function addMessageBubble(msg){
 
     wrap.appendChild(head);
 
-    // Originaltext
+    // Original Text
     const orig=document.createElement("div");
     orig.className="msgOriginal";
     orig.textContent=msg.text;
     wrap.appendChild(orig);
 
-    // Übersetzung (nicht für System, nur wenn ich eingeloggt bin)
+    // Übersetzte Version (außer System)
     if(!isSystem && myProfile){
         const infoLine=document.createElement("div");
         infoLine.className="msgInfoLine";
@@ -892,21 +1019,16 @@ async function addMessageBubble(msg){
         transEl.textContent="(warte...)";
         wrap.appendChild(transEl);
 
-        // meine Sprache
         const myLang = myProfile.language || "de";
-        // Sprache vom Sender
         const senderLang = msg.senderLang || "auto";
 
-        // übersetzen
         const r = await translateAuto(msg.text, myLang);
 
-        // Zeile wie du sie willst:
-        // "Übersetzt aus: EN → DE"
         infoLine.textContent = `Übersetzt aus: ${senderLang} → ${myLang}`;
         transEl.textContent  = r.translatedText;
     }
 
-    // Uhrzeit unter der Nachricht, pink
+    // Pinke Uhrzeit unter Nachricht
     const tDiv=document.createElement("div");
     tDiv.className="msgTime";
     const d = new Date(msg.timestamp || Date.now());
@@ -917,7 +1039,7 @@ async function addMessageBubble(msg){
     messagesEl.scrollTop=messagesEl.scrollHeight;
 }
 
-// Online-Liste rendern und Admin-Panel Ziel setzen
+// Online-Liste neu aufbauen
 function renderOnlineList(arr){
     onlineList.innerHTML="";
     arr.forEach(u=>{
@@ -956,11 +1078,11 @@ function renderOnlineList(arr){
 
         row.addEventListener("click", ()=>{
             if(!myProfile) return;
-            // Adminpanel nur wenn ich Admin/CoOwner/Owner bin
+            // Admin-Panel nur, wenn ich admin/owner/coOwner bin
             if(!(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin")){
                 return;
             }
-            // Nicht mich selbst auswählen
+            // Mich selbst nicht auswählen
             if(myProfile.username===u.username){
                 adminTargetUser=null;
                 adminTargetEl.textContent="Kein Ziel ausgewählt";
@@ -976,11 +1098,11 @@ function renderOnlineList(arr){
     });
 }
 
-// Raum rendern mit Sitzen und Avataren
+// Raum aktualisieren
 function renderRoom(){
     roomArea.innerHTML="";
 
-    // Sitzplätze zeichnen
+    // Sitzplätze anzeigen
     if(currentRoom.seats){
         currentRoom.seats.forEach((seat,idx)=>{
             const spot=document.createElement("div");
@@ -1027,7 +1149,7 @@ function renderRoom(){
         box.appendChild(face);
         box.appendChild(nameLine);
 
-        // Nur mein eigener Avatar ist draggable
+        // Nur meinen eigenen Avatar darf ich ziehen
         if(myProfile && uname===myProfile.username){
             box.addEventListener("mousedown",(ev)=>{
                 dragging={
@@ -1053,7 +1175,7 @@ function renderRoom(){
     }
 }
 
-// Avatar verschieben
+// Avatar bewegen (Drag)
 function onMovePointer(clientX, clientY){
     if(!dragging || !myProfile) return;
     if(dragging.username !== myProfile.username) return;
@@ -1085,23 +1207,96 @@ window.addEventListener("touchmove",(ev)=>{
 window.addEventListener("mouseup",()=>{dragging=null;});
 window.addEventListener("touchend",()=>{dragging=null;});
 
-// SOCKET.io
+/* ===== GAME ROOM UI ===== */
+
+function renderGameState(){
+    if(!currentGame){
+        gameInfoEl.textContent="(Kein Spiel aktiv)";
+        gamePlayersEl.innerHTML="";
+        joinGameBtn.disabled=true;
+        lockGameBtn.disabled=true;
+        return;
+    }
+
+    // Info Text
+    const gameType = currentGame.type || "?";
+    const host     = currentGame.host || "?";
+    const offen    = currentGame.open ? "Offen für neue Spieler 💖" : "Gestartet / geschlossen";
+
+    gameInfoEl.textContent =
+        "Spiel: "+gameType+"\n" +
+        "Host: "+host+"\n" +
+        "Status: "+offen;
+
+    // Spieler Liste
+    gamePlayersEl.innerHTML="";
+    if(Array.isArray(currentGame.players)){
+        currentGame.players.forEach(p=>{
+            const tag=document.createElement("div");
+            tag.className="playerTag";
+            tag.textContent=p;
+            gamePlayersEl.appendChild(tag);
+        });
+    }
+
+    // Buttons aktivieren?
+    if(authToken && myProfile){
+        // join kann man, wenn Spiel offen ist
+        joinGameBtn.disabled = !currentGame.open;
+
+        // lockGame (starten/schließen) darf nur host oder owner
+        if(myProfile.username===currentGame.host || myProfile.role==="owner"){
+            lockGameBtn.disabled=false;
+        }else{
+            lockGameBtn.disabled=true;
+        }
+    }else{
+        joinGameBtn.disabled=true;
+        lockGameBtn.disabled=true;
+    }
+}
+
+// Einladung anzeigen (Popup unten rechts)
+function showInvite(inv){
+    lastInvite = inv; // {type,host}
+    invitePopupTitle.textContent = "Spiel Einladung 🕹";
+    invitePopupTxt.textContent =
+        inv.host+" lädt dich ein "+inv.type+" zu spielen.\nMitspielen?";
+    invitePopup.style.display="block";
+}
+function hideInvite(){
+    invitePopup.style.display="none";
+}
+
+/* ===== SOCKET.io ===== */
 const socket = io();
 
-// eingehende ChatMessages
+// Eingehende ChatMessages
 socket.on("chatMessage",(msg)=>{
     addMessageBubble(msg);
 });
 
-// userlist update
+// Userliste
 socket.on("userlist",(arr)=>{
     renderOnlineList(arr);
 });
 
-// raum update
+// Raum Update
 socket.on("roomUpdate",(st)=>{
     currentRoom = st || {avatars:{},seats:[]};
     renderRoom();
+});
+
+// Game Lobby State (Server-Broadcast)
+socket.on("gameState",(gameObj)=>{
+    currentGame = gameObj || null;
+    renderGameState();
+});
+
+// Spiel-Einladung
+socket.on("gameInvite",(inviteData)=>{
+    // inviteData={type,host,timestamp}
+    showInvite(inviteData);
 });
 
 // forceLogout
@@ -1115,20 +1310,14 @@ socket.on("forceLogout",(data)=>{
     adminPanel.style.display="none";
 });
 
-// game started
-socket.on("gameStarted",(g)=>{
-    const text=`Spiel gestartet: ${g.type} von ${g.startedBy}`;
-    gameStatus.textContent=text;
-    gameStatus.style.color="#00fff6";
-});
+/* ===== LOGIN / REGISTER / PROFILE ===== */
 
-// nach login socket join
+// nach login dem Server sagen "ich bin da"
 function joinChatAfterLogin(){
     if(!authToken) return;
     socket.emit("joinChat", authToken);
 }
 
-// LOGIN
 loginBtn.addEventListener("click", async ()=>{
     setStatus(loginStatus,"Logge ein ...");
     try{
@@ -1156,7 +1345,6 @@ loginBtn.addEventListener("click", async ()=>{
     }
 });
 
-// REGISTRIEREN
 regBtn.addEventListener("click", async ()=>{
     setStatus(regStatus,"Erstelle Account ...");
     try{
@@ -1183,7 +1371,6 @@ regBtn.addEventListener("click", async ()=>{
     }
 });
 
-// PROFIL SPEICHERN
 saveProfileBtn.addEventListener("click", async ()=>{
     if(!authToken){
         setStatus(profileStatus,"Du bist nicht eingeloggt 🙃",true);
@@ -1209,12 +1396,40 @@ saveProfileBtn.addEventListener("click", async ()=>{
         }
         myProfile=data.profile;
         setStatus(profileStatus,"Gespeichert 💜 Dein Style ist jetzt aktiv.");
+        // nach Profil ändern -> Buttons evtl neu aktivieren
+        renderGameState();
     }catch(e){
         setStatus(profileStatus,"Netzwerk-Fehler",true);
     }
 });
 
-// SPIELE STARTEN
+// nach Login UI anpassen
+function afterLoginUI(){
+    if(!myProfile) return;
+
+    msgInput.disabled=false;
+    sendBtn.disabled=false;
+
+    profAvatar.value = myProfile.avatar || "🦋";
+    profColor.value  = myProfile.color || "#ffffff";
+    profLang.value   = myProfile.language || "de";
+    profTheme.value  = myProfile.theme || "default";
+
+    setStatus(profileStatus,"Dein Profil ist geladen 💜");
+    setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
+
+    // Adminpanel nur bei owner/coOwner/admin anzeigen
+    if(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin"){
+        adminPanel.style.display="block";
+    } else {
+        adminPanel.style.display="none";
+    }
+
+    renderGameState();
+}
+
+/* ===== SPIELE STARTEN, BEITRETEN, LOCKEN ===== */
+
 ticBtn.addEventListener("click",()=>{
     if(!authToken||!myProfile)return;
     socket.emit("startGame",{ token:authToken, type:"tictactoe" });
@@ -1224,7 +1439,61 @@ memBtn.addEventListener("click",()=>{
     socket.emit("startGame",{ token:authToken, type:"memory" });
 });
 
-// ADMIN BUTTONS
+// Einladung Popup Buttons
+inviteYesBtn.addEventListener("click",()=>{
+    hideInvite();
+    if(!authToken||!myProfile)return;
+    socket.emit("joinGame",{ token:authToken });
+});
+inviteNoBtn.addEventListener("click",()=>{
+    hideInvite();
+    // nichts tun
+});
+
+// unten im Game Room: "Mitspielen 💖"
+joinGameBtn.addEventListener("click",()=>{
+    if(!authToken||!myProfile)return;
+    socket.emit("joinGame",{ token:authToken });
+});
+
+// unten im Game Room: "Spiel starten / schließen"
+lockGameBtn.addEventListener("click",()=>{
+    if(!authToken||!myProfile)return;
+    socket.emit("lockGame",{ token:authToken });
+});
+
+/* ===== ADMIN BUTTONS ===== */
+
+// Owner fixen: holt dir die Krone zurück
+fixOwnerBtn.addEventListener("click", async ()=>{
+    if(!authToken || !myProfile) return;
+
+    adminStatus.textContent = "Versuche Owner zu fixen...";
+    adminStatus.style.color = "#8a8a9f";
+
+    try {
+        const res = await fetch("/fixOwner", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ token: authToken })
+        });
+        const data = await res.json();
+        if(!data.ok){
+            adminStatus.textContent = data.error || "Fehler beim Fixen";
+            adminStatus.style.color = "#ff4dfd";
+            return;
+        }
+
+        myProfile = data.profile;
+        adminStatus.textContent = "Du bist jetzt (wieder) OWNER 👑";
+        adminStatus.style.color = "#ffd93b";
+
+    } catch (e) {
+        adminStatus.textContent = "Netzwerk-Fehler beim Fixen";
+        adminStatus.style.color = "#ff4dfd";
+    }
+});
+
 makeCoOwnerBtn.addEventListener("click",()=>{
     if(!authToken||!myProfile)return;
     if(!adminTargetUser){
@@ -1277,28 +1546,7 @@ banBtn.addEventListener("click",()=>{
     });
 });
 
-// nach Login UI freischalten
-function afterLoginUI(){
-    if(!myProfile) return;
-
-    msgInput.disabled=false;
-    sendBtn.disabled=false;
-
-    profAvatar.value = myProfile.avatar || "🦋";
-    profColor.value  = myProfile.color || "#ffffff";
-    profLang.value   = myProfile.language || "de";
-    profTheme.value  = myProfile.theme || "default";
-
-    setStatus(profileStatus,"Dein Profil ist geladen 💜");
-    setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
-
-    // Adminpanel nur zeigen, wenn ich owner/coOwner/admin bin
-    if(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin"){
-        adminPanel.style.display="block";
-    } else {
-        adminPanel.style.display="none";
-    }
-}
+/* ===== CHAT SENDEN ===== */
 
 // ENTER = senden, Shift+Enter = neue Zeile
 msgInput.addEventListener("keydown",(ev)=>{
@@ -1319,20 +1567,20 @@ sendBtn.addEventListener("click", ()=>{
     let txt = msgInput.value.trim();
     if(!txt)return;
 
-    // deutsche Schnellkorrektur
+    // kleine Rechtschreib-Korrektur
     txt = fixGermanQuick(txt);
 
     socket.emit("sendMessage",{
         token:authToken,
         text:txt
-        // Sprache des Senders hängt der Server an (senderLang)
     });
 
     msgInput.value="";
     msgInput.focus();
 });
 
-// Hilfe-Sprache Textbox umstellen
+/* ===== Hilfe Sprache Umschalten ===== */
+
 helpLangSelect.addEventListener("change", ()=>{
     const lg = helpLangSelect.value;
     const pack = HELP_TEXT[lg] || HELP_TEXT.de;
