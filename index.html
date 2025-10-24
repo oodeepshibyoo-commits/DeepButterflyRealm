@@ -1,1593 +1,332 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DeepButterfly Realm 3.0 💜👑</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepButterflyRealm 🦋</title>
+
 <style>
-/* --- Neon Dark Layout --- */
-body{
-    margin:0;
-    background:#050505;
-    color:#fff;
-    font-family:Arial,Helvetica,sans-serif;
-    display:grid;
-    grid-template-columns:260px 1fr;
-    grid-template-rows:auto 220px 1fr auto auto; /* extra row for game room */
-    grid-template-areas:
-        "side head"
-        "side room"
-        "side chat"
-        "side input"
-        "side game";
-    height:100vh;
-    overflow:hidden;
-    position:relative;
+/* ==== 🌑 Neon-Dunkel-Design ==== */
+body {
+  margin:0;
+  font-family: 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top, #050009, #0a0018 70%);
+  color:#fff;
+  overflow:hidden;
 }
+#topbar {
+  position:fixed; top:0; left:0; right:0;
+  height:50px; display:flex; align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  background:rgba(30,0,40,0.7);
+  border-bottom:1px solid #ff3eb5;
+  box-shadow:0 0 10px #ff3eb5;
+}
+#clockTop {
+  color:#ff3eb5;
+  font-weight:bold;
+}
+#main {
+  display:flex;
+  height:calc(100vh - 50px);
+  margin-top:50px;
+}
+#sidebar {
+  width:250px;
+  background:rgba(20,0,40,0.7);
+  border-right:1px solid #ff3eb5;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+}
+#sidebar.hidden { display:none; }
+#sidebar h2 { color:#ff3eb5; text-align:center; }
+#chatArea {
+  flex:1; display:flex; flex-direction:column;
+  justify-content:space-between;
+  padding:10px;
+}
+#chat {
+  flex:1; overflow-y:auto; padding-right:10px;
+}
+.message {
+  background:rgba(255,62,181,0.1);
+  border:1px solid rgba(255,62,181,0.3);
+  margin:5px 0; padding:6px 10px;
+  border-radius:10px;
+}
+.message strong { color:#ff3eb5; }
+.meta { font-size:0.8em; color:#aaa; }
+#msgInput {
+  width:100%; padding:10px;
+  background:#15001e; color:#fff;
+  border:1px solid #ff3eb5;
+  border-radius:10px;
+  outline:none;
+}
+#clockBottom {
+  color:#ff3eb5; text-align:right;
+  font-size:0.9em;
+  margin-top:3px;
+}
+button {
+  background:#ff3eb5; color:#fff;
+  border:none; border-radius:10px;
+  padding:6px 12px; margin:3px 0;
+  cursor:pointer; font-weight:bold;
+}
+button:hover { background:#ff73cc; }
 
-/* Pinke Neon-Uhr oben rechts */
-#clockTop{
-    position:fixed;
-    right:20px;
-    top:10px;
-    z-index:9999;
-    color:#ff4dfd;
-    font-size:.7rem;
-    font-weight:600;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    font-family:Consolas,Menlo,monospace;
+/* Avatar-Spielbereich */
+#gameArea {
+  position:relative; width:100%; height:300px;
+  background:rgba(255,62,181,0.05);
+  border:1px solid rgba(255,62,181,0.3);
+  border-radius:15px; margin-top:10px;
+  overflow:hidden;
 }
-
-/* HEADER */
-header{
-    grid-area:head;
-    background:#1a1a24cc;
-    border-bottom:2px solid #6b00ff;
-    box-shadow:0 20px 60px rgba(255,77,253,.25),
-               0 0 40px rgba(0,255,246,.25),
-               0 0 120px rgba(107,0,255,.4);
-    padding:.75rem 1rem;
-    font-size:.8rem;
-    line-height:1.4;
-    text-align:center;
-    z-index:10;
-}
-header .big{
-    color:#ff4dfd;
-    font-weight:600;
-    text-shadow:0 0 10px #ff4dfd,0 0 20px #00fff6;
-}
-header .sub{
-    color:#00fff6;
-    font-size:.7rem;
-    text-shadow:0 0 6px #00fff6;
-}
-
-/* SIDEBAR */
-aside{
-    grid-area:side;
-    background:#1a1a24dd;
-    border-right:2px solid #6b00ff;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    padding:.75rem;
-    font-size:.75rem;
-    overflow-y:auto;
-    z-index:10;
-}
-h2{
-    margin:.5rem 0 .25rem;
-    font-size:.75rem;
-    font-weight:600;
-    color:#ff4dfd;
-    text-shadow:0 0 6px #ff4dfd,0 0 10px #00fff6;
-}
-small{
-    color:#8a8a9f;
-    font-size:.7rem;
-    line-height:1.4;
-    display:block;
-    margin-bottom:.5rem;
-}
-.block{
-    border:2px solid #6b00ff;
-    border-radius:10px;
-    background:#2a2a38aa;
-    box-shadow:0 0 16px rgba(107,0,255,.4),
-               0 0 32px rgba(0,255,246,.2);
-    padding:.5rem .75rem;
-    margin-bottom:1rem;
-    font-size:.7rem;
-    line-height:1.4;
-}
-
-/* FORM ELEMENTE */
-label{
-    display:block;
-    font-size:.7rem;
-    font-weight:600;
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 10px #00fff6;
-    margin-bottom:.25rem;
-}
-input[type="text"],
-input[type="password"],
-input[type="color"],
-select,
-textarea{
-    width:100%;
-    background:#2a2a38;
-    color:#fff;
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    font-size:.7rem;
-    padding:.4rem .5rem;
-    margin-bottom:.5rem;
-    box-shadow:0 0 12px rgba(107,0,255,.6),
-               0 0 24px rgba(0,255,246,.4);
-    outline:none;
-    font-family:Consolas,Menlo,monospace;
-}
-button.btn,
-button.smallBtn{
-    background:radial-gradient(circle at 20% 20%, #ff4dfd 0%, #6b00ff 60%);
-    border:0;
-    border-radius:8px;
-    color:#000;
-    font-size:.75rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.5rem .6rem;
-    cursor:pointer;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    box-shadow:0 12px 30px rgba(255,77,253,.45),
-               0 0 20px rgba(0,255,246,.4),
-               0 0 60px rgba(107,0,255,.6);
-    margin-bottom:.5rem;
-}
-button.btn:disabled,
-button.smallBtn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-}
-.smallBtn{
-    display:inline-block;
-    margin-right:.25rem;
-    margin-bottom:.25rem;
-    font-size:.65rem;
-    padding:.4rem .5rem;
-}
-
-.statusLine{
-    color:#8a8a9f;
-    font-size:.7rem;
-    line-height:1.4;
-    min-height:2.8em;
-    white-space:pre-wrap;
-}
-
-/* ONLINE LISTE */
-#onlineList .userRow{
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    background:#2a2a38aa;
-    box-shadow:0 0 12px rgba(107,0,255,.4),
-               0 0 24px rgba(0,255,246,.2);
-    padding:.5rem;
-    margin-bottom:.5rem;
-    line-height:1.3;
-    cursor:pointer;
-}
-.nameLine{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.4rem;
-    font-weight:600;
-}
-.avatarEmoji{
-    font-size:1rem;
-    line-height:1rem;
-    animation:bounce 2s ease-in-out infinite;
-    text-shadow:0 0 8px #fff,0 0 12px #ff4dfd;
-}
-@keyframes bounce{
-    0%   {transform:translateY(0) rotate(-2deg) scale(1);}
-    25%  {transform:translateY(-2px) rotate(2deg) scale(1.05);}
-    50%  {transform:translateY(0) rotate(-1deg) scale(1);}
-    75%  {transform:translateY(-3px) rotate(3deg) scale(1.07);}
-    100% {transform:translateY(0) rotate(-2deg) scale(1);}
-}
-.roleCrown{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.8rem;
-}
-.metaLine{
-    color:#aaa;
-    font-size:.65rem;
-}
-
-/* RAUM */
-#roomWrap{
-    grid-area:room;
-    background:#1a1a24dd;
-    border-bottom:2px solid #6b00ff;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    position:relative;
-    overflow:hidden;
-    padding:.5rem .75rem .75rem;
-    font-size:.7rem;
-}
-#roomTitle{
-    color:#ff4dfd;
-    font-weight:600;
-    font-size:.75rem;
-    text-shadow:0 0 10px #ff4dfd,0 0 20px #00fff6;
-    margin-bottom:.5rem;
-    display:flex;
-    justify-content:space-between;
-    flex-wrap:wrap;
-}
-#roomSub{
-    color:#8a8a9f;
-    font-size:.65rem;
-    line-height:1.2;
-}
-#roomArea{
-    position:relative;
-    width:100%;
-    height:160px;
-    border:2px solid #6b00ff;
-    border-radius:10px;
-    background:radial-gradient(circle at 20% 20%,rgba(107,0,255,.4)0%,rgba(0,0,0,.2)60%);
-    box-shadow:0 0 20px rgba(107,0,255,.6),
-               0 0 60px rgba(0,255,246,.2),
-               0 0 120px rgba(255,77,253,.2);
-    overflow:hidden;
-}
-.roomAvatar{
-    position:absolute;
-    cursor:grab;
-    user-select:none;
-    font-size:1.4rem;
-    line-height:1.4rem;
-    text-shadow:0 0 8px #fff,0 0 12px #ff4dfd;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    font-weight:600;
-    min-width:2rem;
-    text-align:center;
-}
-.roomName{
-    font-size:.6rem;
-    margin-top:.25rem;
-    text-shadow:0 0 6px #00fff6;
-}
-.roomCrown{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.6rem;
-    margin-left:.25rem;
-}
-.seatSpot{
-    position:absolute;
-    width:30px;
-    height:20px;
-    border:2px solid #00fff6;
-    border-radius:6px;
-    background:#00222288;
-    box-shadow:0 0 10px #00fff6,0 0 20px #ff4dfd;
-    font-size:.55rem;
-    line-height:20px;
-    text-align:center;
-    color:#00fff6;
-    cursor:pointer;
-    font-family:Consolas,Menlo,monospace;
-}
-
-/* CHAT */
-main{
-    grid-area:chat;
-    background:#1a1a24dd;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    display:flex;
-    flex-direction:column;
-    position:relative;
-    overflow:hidden;
-}
-#messages{
-    flex:1;
-    overflow-y:auto;
-    padding:1rem;
-    font-family:Consolas,Menlo,monospace;
-    font-size:.8rem;
-    line-height:1.4;
-}
-.msgBubble{
-    border:2px solid #6b00ff;
-    background:#2a2a38;
-    box-shadow:0 0 20px rgba(107,0,255,.4),
-               0 0 40px rgba(0,255,246,.2);
-    border-radius:10px;
-    padding:.6rem .7rem;
-    margin-bottom:.6rem;
-    max-width:85%;
-    white-space:pre-wrap;
-    word-break:break-word;
-}
-.msgBubble.system{
-    border-color:#444;
-    background:#2a2a3844;
-    box-shadow:none;
-}
-.msgHeader{
-    font-weight:600;
-    font-size:.7rem;
-    margin-bottom:.4rem;
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.4rem;
-}
-.msgHeaderName{
-    text-shadow:0 0 8px #fff,0 0 12px #00fff6;
-}
-.msgHeaderName.systemName{
-    color:#888 !important;
-    text-shadow:none;
-}
-.msgHeaderRole{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.7rem;
-}
-.msgOriginal{
-    color:#bbb;
-    margin-bottom:.4rem;
-}
-.msgInfoLine{
-    font-size:.65rem;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-bottom:.25rem;
-    display:flex;
-    flex-wrap:wrap;
-    gap:.5rem;
-}
-.msgTranslation{
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    white-space:pre-wrap;
-    word-break:break-word;
-}
-
-/* UNTEN: Nachricht + Senden */
-footer{
-    grid-area:input;
-    background:#1a1a24cc;
-    border-top:2px solid #6b00ff;
-    box-shadow:0 -20px 60px rgba(255,77,253,.25),
-               0 0 40px rgba(0,255,246,.25),
-               0 0 120px rgba(107,0,255,.4);
-    padding:.75rem;
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:.5rem;
-    align-items:flex-start;
-}
-#msgInput{
-    width:100%;
-    height:60px;
-    resize:none;
-    background:#2a2a38;
-    color:#fff;
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    font-size:.8rem;
-    line-height:1.3;
-    font-family:Consolas,Menlo,monospace;
-    padding:.6rem .7rem;
-    box-shadow:inset 0 0 12px rgba(0,0,0,.6),
-               0 0 20px rgba(107,0,255,.5);
-    outline:none;
-}
-#sendBtn{
-    background:radial-gradient(circle at 20% 20%, #00fff6 0%, #003d3d 60%);
-    border:0;
-    border-radius:10px;
-    color:#00fff6;
-    text-shadow:0 0 8px #00fff6,0 0 12px #ff4dfd;
-    font-size:.8rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.6rem .8rem;
-    cursor:pointer;
-    box-shadow:0 12px 30px rgba(0,255,246,.4),
-               0 0 20px rgba(255,77,253,.4),
-               0 0 60px rgba(107,0,255,.6);
-    min-width:120px;
-}
-#sendBtn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-}
-
-/* GAME ROOM BEREICH */
-#gameRoomWrap{
-    grid-area:game;
-    background:#0f0f14dd;
-    border-top:2px solid #6b00ff;
-    box-shadow:0 -10px 40px rgba(0,255,246,.2),
-               0 0 60px rgba(255,77,253,.2);
-    padding:.75rem;
-    font-size:.7rem;
-    line-height:1.4;
-    overflow-y:auto;
-    max-height:25vh;
-}
-#gameHeaderLine{
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:.5rem;
-    color:#00fff6;
-    font-size:.75rem;
-    font-weight:600;
-    text-shadow:0 0 10px #00fff6,0 0 20px #ff4dfd;
-}
-#gameInfo{
-    color:#8a8a9f;
-    font-size:.7rem;
-    line-height:1.4;
-    white-space:pre-wrap;
-    word-break:break-word;
-    margin-top:.5rem;
-    border:2px solid #6b00ff;
-    border-radius:10px;
-    background:#2a2a38aa;
-    box-shadow:0 0 16px rgba(107,0,255,.4),
-               0 0 32px rgba(0,255,246,.2);
-    padding:.5rem .75rem;
-}
-#gamePlayers{
-    margin-top:.5rem;
-    font-size:.7rem;
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-}
-.playerTag{
-    display:inline-block;
-    background:#2a2a38;
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    padding:.3rem .4rem;
-    margin:.2rem;
-    box-shadow:0 0 12px rgba(107,0,255,.6),
-               0 0 24px rgba(0,255,246,.4);
-    font-size:.7rem;
-    font-weight:600;
-}
-#joinGameBtn,
-#lockGameBtn{
-    background:radial-gradient(circle at 20% 20%, #00fff6 0%, #003d3d 60%);
-    border:0;
-    border-radius:8px;
-    color:#00fff6;
-    text-shadow:0 0 8px #00fff6,0 0 12px #ff4dfd;
-    font-size:.7rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.4rem .6rem;
-    cursor:pointer;
-    box-shadow:0 12px 30px rgba(0,255,246,.4),
-               0 0 20px rgba(255,77,253,.4),
-               0 0 60px rgba(107,0,255,.6);
-    margin-right:.4rem;
-}
-
-/* GAME INVITE POPUP */
-#invitePopup{
-    position:fixed;
-    bottom:90px;
-    right:20px;
-    max-width:240px;
-    background:#1a1a24ee;
-    border:2px solid #6b00ff;
-    border-radius:12px;
-    box-shadow:0 0 20px rgba(107,0,255,.6),
-               0 0 60px rgba(255,77,253,.3),
-               0 0 120px rgba(0,255,246,.3);
-    padding:.75rem;
-    font-size:.7rem;
-    line-height:1.4;
-    color:#fff;
-    z-index:99999;
-    display:none;
-}
-#invitePopupTitle{
-    color:#00fff6;
-    font-weight:600;
-    text-shadow:0 0 8px #00fff6,0 0 12px #ff4dfd;
-    margin-bottom:.4rem;
-}
-#invitePopupTxt{
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    margin-bottom:.5rem;
-    white-space:pre-wrap;
-}
-#inviteYesBtn,
-#inviteNoBtn{
-    background:radial-gradient(circle at 20% 20%, #ff4dfd 0%, #6b00ff 60%);
-    border:0;
-    border-radius:8px;
-    color:#000;
-    font-size:.7rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.4rem .6rem;
-    cursor:pointer;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    box-shadow:0 12px 30px rgba(255,77,253,.45),
-               0 0 20px rgba(0,255,246,.4),
-               0 0 60px rgba(107,0,255,.6);
-    margin-right:.4rem;
-}
-
-/* Pinke Uhr pro Nachricht */
-.msgTime{
-    font-size:.6rem;
-    font-family:Consolas,Menlo,monospace;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-top:.4rem;
-    text-align:right;
-}
-
-/* Hilfetext Sprache */
-#helpBox{
-    border:1px solid #6b00ff;
-    border-radius:8px;
-    background:#1a1a24;
-    box-shadow:0 0 16px rgba(107,0,255,.4),
-               0 0 32px rgba(0,255,246,.2);
-    padding:.5rem .6rem;
-    font-size:.7rem;
-    line-height:1.4;
-    color:#fff;
-    white-space:pre-wrap;
-}
-#helpBoxTitle{
-    font-weight:600;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-bottom:.4rem;
-    font-size:.7rem;
+.avatar {
+  position:absolute; width:50px; height:50px;
+  border-radius:50%;
+  background:radial-gradient(circle,#ff3eb5,#900090);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3em;
 }
 </style>
 </head>
+
 <body>
-
-<div id="clockTop">--:--</div>
-
-<header>
-    <div class="big">DeepButterfly Realm 3.0 💜👑</div>
-    <div class="sub">Multilingual · Owner-Krone · Avatare · Sitzen · Spiele mit Einladung · Uhrzeit 💖</div>
-</header>
-
-<aside>
-    <!-- LOGIN -->
-    <div class="block">
-        <h2>Login</h2>
-        <label for="loginUser">Name</label>
-        <input id="loginUser" type="text" placeholder="z.B. DeepButterflyMusic" />
-        <label for="loginPass">Passwort</label>
-        <input id="loginPass" type="password" placeholder="••••••" />
-        <button class="btn" id="loginBtn">Einloggen</button>
-        <div class="statusLine" id="loginStatus"></div>
-    </div>
-
-    <!-- REGISTRIEREN -->
-    <div class="block">
-        <h2>Registrieren</h2>
-
-        <label for="helpLangSelect">Hilfe-Sprache</label>
-        <select id="helpLangSelect">
-            <option value="de">Deutsch</option>
-            <option value="hu">Magyar / Ungarisch</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-            <option value="fr">Français</option>
-            <option value="it">Italiano</option>
-            <option value="pt">Português</option>
-            <option value="tr">Türkçe</option>
-            <option value="ru">Русский</option>
-            <option value="ar">العربية</option>
-            <option value="zh">中文</option>
-            <option value="ja">日本語</option>
-        </select>
-
-        <div id="helpBox">
-            <div id="helpBoxTitle">So meldest du dich an 💜</div>
-            <div id="helpBoxText">
-1. Wähle einen Namen.
-2. Wähle ein Passwort.
-3. Wähle Avatar (Emoji).
-4. Wähle deine Farbe.
-5. Wähle deine Sprache.
-6. Klick "Account erstellen".
-
-Der erste Account-Name "DeepButterflyMusic" ist immer Owner 👑.
-Owner & CoOwner/Admin können kicken/bannen.
-            </div>
-        </div>
-        <br/>
-
-        <label for="regUser">Neuer Name</label>
-        <input id="regUser" type="text" placeholder="z.B. DarkInfernal" />
-        <label for="regPass">Passwort</label>
-        <input id="regPass" type="password" placeholder="Passwort wählen" />
-
-        <label for="regAvatar">Avatar Emoji / Symbol</label>
-        <select id="regAvatar">
-            <option>🦋</option>
-            <option>💖</option>
-            <option>💎</option>
-            <option>🔮</option>
-            <option>🌟</option>
-        </select>
-
-        <label for="regColor">Name Farbe</label>
-        <input id="regColor" type="color" value="#ff4dfd" />
-
-        <label for="regLang">Sprache für deine Übersetzung</label>
-        <select id="regLang"></select>
-
-        <label for="regTheme">Dein Style / Theme / Schrift</label>
-        <input id="regTheme" type="text" placeholder="butterfly / fire / rose / neon ..." />
-
-        <button class="btn" id="regBtn">Account erstellen</button>
-        <div class="statusLine" id="regStatus"></div>
-
-        <!-- SPIELE START PANEL -->
-        <div id="gameAreaSide" style="border-top:1px solid #6b00ff;margin-top:.5rem;padding-top:.5rem;color:#8a8a9f;font-size:.7rem;">
-            <strong>🎮 Spiele starten (nur Admin/Owner)</strong><br/>
-            <button class="smallBtn" id="ticBtn">TicTacToe</button>
-            <button class="smallBtn" id="memBtn">Memory</button>
-            <div id="gameStatusSide" class="statusLine"></div>
-        </div>
-    </div>
-
-    <!-- PROFIL -->
-    <div class="block">
-        <h2>Dein Profil</h2>
-        <small>Avatar / Farbe / Sprache / Theme kannst du selber ändern 💅</small>
-
-        <label for="profAvatar">Avatar Emoji</label>
-        <select id="profAvatar">
-            <option>🦋</option>
-            <option>💖</option>
-            <option>💎</option>
-            <option>🔮</option>
-            <option>🌟</option>
-        </select>
-
-        <label for="profColor">Name Farbe</label>
-        <input id="profColor" type="color" value="#ffffff"/>
-
-        <label for="profLang">Deine Sprache</label>
-        <select id="profLang"></select>
-
-        <label for="profTheme">Theme / Schrift</label>
-        <input id="profTheme" type="text" placeholder="butterfly / fire / etc."/>
-
-        <button class="btn" id="saveProfileBtn">Speichern</button>
-        <div class="statusLine" id="profileStatus"></div>
-
-        <!-- ADMIN PANEL -->
-        <div id="adminPanel" style="display:none;border-top:1px solid #6b00ff;margin-top:.5rem;padding-top:.5rem;">
-            <div class="targetName" style="font-weight:600;color:#ff4dfd;text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;margin-bottom:.5rem;">
-                Kein Ziel ausgewählt
-            </div>
-
-            <button class="smallBtn" id="fixOwnerBtn">👑 Owner fixen (nur du)</button>
-            <button class="smallBtn" id="makeCoOwnerBtn">👑 Mitbesitzer machen</button>
-            <button class="smallBtn" id="removeCoOwnerBtn">💔 Mitbesitzer entfernen</button>
-            <button class="smallBtn" id="kickBtn">🚫 Kicken</button>
-            <button class="smallBtn" id="banBtn">❌ Bannen</button>
-
-            <div class="statusLine" id="adminStatus"></div>
-        </div>
-    </div>
-
-    <!-- ONLINE USERS -->
-    <div class="block">
-        <h2>Wer ist online?</h2>
-        <small>Klick einen Namen (wenn du Owner / CoOwner / Admin bist)</small>
-        <div id="onlineList"></div>
-    </div>
-</aside>
-
-<!-- RAUM OBEN -->
-<div id="roomWrap">
-    <div id="roomTitle">
-        <span>Butterfly Room 🦋</span>
-        <span id="roomSub">Zieh dich wohin du willst 💖 oder setz dich 💺</span>
-    </div>
-    <div id="roomArea"></div>
+<div id="topbar">
+  <div>🦋 <b>DeepButterflyRealm</b></div>
+  <div id="clockTop"></div>
 </div>
 
-<!-- CHAT -->
-<main>
-    <div id="messages"></div>
-</main>
+<div id="main">
+  <div id="sidebar" class="hidden">
+    <h2>Online</h2>
+    <div id="userList"></div>
+    <hr>
+    <button id="startGameBtn">🎮 TicTacToe</button>
+  </div>
 
-<!-- NACHRICHT SENDEN -->
-<footer>
-    <textarea id="msgInput" placeholder="Schreib hier... Enter = senden, Shift+Enter = neue Zeile" disabled></textarea>
-    <button id="sendBtn" disabled>Senden</button>
-</footer>
-
-<!-- GAME ROOM ANZEIGE UNTEN -->
-<section id="gameRoomWrap">
-    <div id="gameHeaderLine">
-        <div>🕹 Spielraum / Lobby</div>
-        <div>
-            <button id="joinGameBtn" disabled>Mitspielen 💖</button>
-            <button id="lockGameBtn" disabled>Spiel starten / schließen</button>
-        </div>
-    </div>
-
-    <div id="gameInfo">(Kein Spiel aktiv)</div>
-    <div id="gamePlayers"></div>
-</section>
-
-<!-- EINLADUNG POPUP -->
-<div id="invitePopup">
-    <div id="invitePopupTitle">Spiel Einladung 🕹</div>
-    <div id="invitePopupTxt">?</div>
-    <div>
-        <button id="inviteYesBtn">Mitspielen 💖</button>
-        <button id="inviteNoBtn">Nein</button>
-    </div>
+  <div id="chatArea">
+    <div id="chat"></div>
+    <input id="msgInput" placeholder="Nachricht eingeben und Enter drücken...">
+    <div id="clockBottom"></div>
+  </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-// ================== Sprachdaten ==================
-const LANGS = [
-    {code:"de", name:"Deutsch"},
-    {code:"hu", name:"Magyar / Ungarisch"},
-    {code:"en", name:"English"},
-    {code:"es", name:"Español"},
-    {code:"fr", name:"Français"},
-    {code:"it", name:"Italiano"},
-    {code:"pt", name:"Português"},
-    {code:"tr", name:"Türkçe"},
-    {code:"ru", name:"Русский"},
-    {code:"ar", name:"العربية"},
-    {code:"zh", name:"中文"},
-    {code:"ja", name:"日本語"}
-];
+/* === 🕒 Uhrzeit === */
+function updateClocks(){
+  const t=new Date().toLocaleTimeString();
+  document.getElementById("clockTop").textContent=t;
+  document.getElementById("clockBottom").textContent=t;
+}
+setInterval(updateClocks,1000);
+updateClocks();
 
-const HELP_TEXT = {
-  de: {
-    title: "So meldest du dich an 💜",
-    body:
-`1. Wähle einen Namen.
-2. Wähle ein Passwort.
-3. Wähle Avatar (Emoji).
-4. Wähle deine Farbe.
-5. Wähle deine Sprache.
-6. Klick "Account erstellen".
+/* === 🔗 Socket Verbindung === */
+const socket=io();
 
-Der Name "DeepButterflyMusic" ist immer Owner 👑.
-Owner / CoOwner / Admin können kicken oder bannen.`
-  },
-  en: {
-    title: "How to join 💜",
-    body:
-`1. Choose a name.
-2. Choose a password.
-3. Pick your avatar (emoji).
-4. Pick your name color.
-5. Pick your language.
-6. Click "Create account".
+/* === 🌐 Google Translate === */
+const GOOGLE_API_KEY="YOUR_GOOGLE_API_KEY_HERE";
+async function translateText(text,target){
+  try{
+    const r=await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({q:text,target})
+    });
+    const data=await r.json();
+    return data.data?.translations?.[0]?.translatedText||text;
+  }catch(e){console.error(e);return text;}
+}
 
-The name "DeepButterflyMusic" is always Owner 👑.
-Owner / CoOwner / Admin can kick or ban.`
-  },
-  hu: {
-    title: "Így tudsz belépni 💜",
-    body:
-`1. Válassz nevet.
-2. Válassz jelszót.
-3. Válassz avatart (emoji).
-4. Válassz névszínt.
-5. Válassz nyelvet.
-6. Kattints: "Fiók létrehozása".
+/* === 💬 Chat-System === */
+let username=null;
+let userLang="de";
+let userColor="#ff3eb5";
+let isOwner=false;
 
-A "DeepButterflyMusic" név mindig Owner 👑.
-Az Owner / CoOwner / Admin ki tud rúgni vagy tilthat másokat.`
+/* Simpler Login */
+username=prompt("Bitte gib deinen Namen ein:");
+userLang=prompt("Sprache (z.B. de, hu, en):")||"de";
+socket.emit("join",{user:username,lang:userLang,color:userColor});
+
+document.getElementById("msgInput").addEventListener("keydown",async e=>{
+  if(e.key==="Enter"&&e.target.value.trim()!==""){
+    const text=e.target.value.trim();
+    socket.emit("chat",{text,lang:userLang,color:userColor,user:username});
+    e.target.value="";
   }
-  // weitere Sprachen kannst du später ergänzen
-};
+});
 
-// ===== Übersetzungsserver Liste =====
-const TRANSLATE_SERVERS = [
-    "https://translate.astian.org/translate",
-    "https://libretranslate.de/translate",
-    "https://translate.fedilab.app/translate"
-];
+/* === 📥 Eingehende Nachrichten === */
+socket.on("chat",async msg=>{
+  const myLang=userLang;
+  const translated=await translateText(msg.text,myLang);
+  const chat=document.getElementById("chat");
+  const el=document.createElement("div");
+  el.className="message";
+  el.innerHTML=`<strong style="color:${msg.color}">${msg.user}</strong>: ${translated}
+  <div class="meta">Übersetzt aus ${msg.lang} → ${myLang}</div>`;
+  chat.appendChild(el);
+  chat.scrollTop=chat.scrollHeight;
+});
+/* === 🧍 Online-Liste aktualisieren === */
+socket.on("userlist", list=>{
+  const sidebar=document.getElementById("sidebar");
+  if(!username)return; // Nicht eingeloggt → Liste bleibt verborgen
+  sidebar.classList.remove("hidden");
+  const ul=document.getElementById("userList");
+  ul.innerHTML="";
+  list.forEach(u=>{
+    const div=document.createElement("div");
+    div.textContent=u.user+(u.role==="owner"?" 👑":"");
+    ul.appendChild(div);
+  });
+});
 
-// ===== DOM ELEMENTE =====
-const loginUser    = document.getElementById("loginUser");
-const loginPass    = document.getElementById("loginPass");
-const loginBtn     = document.getElementById("loginBtn");
-const loginStatus  = document.getElementById("loginStatus");
+/* === 🦋 Avatar-Bereich === */
+const gameArea=document.createElement("div");
+gameArea.id="gameArea";
+document.getElementById("chatArea").prepend(gameArea);
 
-const regUser      = document.getElementById("regUser");
-const regPass      = document.getElementById("regPass");
-const regAvatar    = document.getElementById("regAvatar");
-const regColor     = document.getElementById("regColor");
-const regLang      = document.getElementById("regLang");
-const regTheme     = document.getElementById("regTheme");
-const regBtn       = document.getElementById("regBtn");
-const regStatus    = document.getElementById("regStatus");
+const avatars={};
 
-const profAvatar   = document.getElementById("profAvatar");
-const profColor    = document.getElementById("profColor");
-const profLang     = document.getElementById("profLang");
-const profTheme    = document.getElementById("profTheme");
-const saveProfileBtn = document.getElementById("saveProfileBtn");
-const profileStatus  = document.getElementById("profileStatus");
+socket.on("spawn",user=>{
+  if(!avatars[user.user]){
+    const el=document.createElement("div");
+    el.className="avatar";
+    el.style.left=Math.random()*250+"px";
+    el.style.top=Math.random()*200+"px";
+    el.textContent="🦋";
+    gameArea.appendChild(el);
+    avatars[user.user]=el;
+  }
+});
 
-const helpLangSelect = document.getElementById("helpLangSelect");
-const helpBoxTitle   = document.getElementById("helpBoxTitle");
-const helpBoxText    = document.getElementById("helpBoxText");
+socket.on("move",data=>{
+  if(avatars[data.user]){
+    avatars[data.user].style.left=data.x+"px";
+    avatars[data.user].style.top=data.y+"px";
+  }
+});
 
-const onlineList   = document.getElementById("onlineList");
-const adminPanel   = document.getElementById("adminPanel");
-const adminStatus  = document.getElementById("adminStatus");
+document.addEventListener("keydown",e=>{
+  if(!avatars[username])return;
+  const el=avatars[username];
+  let x=parseInt(el.style.left)||0;
+  let y=parseInt(el.style.top)||0;
+  if(e.key==="ArrowLeft")x-=10;
+  if(e.key==="ArrowRight")x+=10;
+  if(e.key==="ArrowUp")y-=10;
+  if(e.key==="ArrowDown")y+=10;
+  el.style.left=x+"px";
+  el.style.top=y+"px";
+  socket.emit("move",{user:username,x,y});
+});
 
-const fixOwnerBtn      = document.getElementById("fixOwnerBtn");
-const makeCoOwnerBtn   = document.getElementById("makeCoOwnerBtn");
-const removeCoOwnerBtn = document.getElementById("removeCoOwnerBtn");
-const kickBtn          = document.getElementById("kickBtn");
-const banBtn           = document.getElementById("banBtn");
-const adminTargetEl    = adminPanel.querySelector(".targetName");
-
-const roomArea     = document.getElementById("roomArea");
-const messagesEl   = document.getElementById("messages");
-const msgInput     = document.getElementById("msgInput");
-const sendBtn      = document.getElementById("sendBtn");
-const clockTopEl   = document.getElementById("clockTop");
-
-const ticBtn       = document.getElementById("ticBtn");
-const memBtn       = document.getElementById("memBtn");
-const gameStatusSide = document.getElementById("gameStatusSide");
-
-const joinGameBtn  = document.getElementById("joinGameBtn");
-const lockGameBtn  = document.getElementById("lockGameBtn");
-const gameInfoEl   = document.getElementById("gameInfo");
-const gamePlayersEl= document.getElementById("gamePlayers");
-
-const invitePopup      = document.getElementById("invitePopup");
-const invitePopupTitle = document.getElementById("invitePopupTitle");
-const invitePopupTxt   = document.getElementById("invitePopupTxt");
-const inviteYesBtn     = document.getElementById("inviteYesBtn");
-const inviteNoBtn      = document.getElementById("inviteNoBtn");
-
-// ===== STATE =====
-let authToken = null;
-let myProfile = null;
-let dragging  = null; // { username, el, offsetX, offsetY }
-let currentRoom = { avatars: {}, seats: [] };
-let adminTargetUser = null;
-let currentGame = null;
-let lastInvite = null; // {type,host}
-
-// ===== Hilfsfunktionen =====
-
-// Alle Sprach-Selects füllen
-function fillLangSelect(sel){
-    LANGS.forEach(l=>{
-        const o=document.createElement("option");
-        o.value=l.code;
-        o.textContent=l.name;
-        sel.appendChild(o);
-    });
-}
-fillLangSelect(regLang);
-fillLangSelect(profLang);
-
-// Uhrzeit oben (läuft jede Sekunde)
-function updateClockTop(){
-    const d=new Date();
-    const opts={weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'};
-    const txt=d.toLocaleString(undefined,opts);
-    clockTopEl.textContent=txt;
-}
-setInterval(updateClockTop,1000);
-updateClockTop();
-
-// Statusmeldung helper
-function setStatus(el, msg, isErr=false){
-    el.textContent = msg;
-    el.style.color = isErr ? "#ff4dfd" : "#8a8a9f";
-}
-
-// kleine Rechtschreib-Korrektur Deutsch
-function fixGermanQuick(t){
-    return t
-      .replace(/\bich libe dich\b/gi,"ich liebe dich")
-      .replace(/\bich libe dich so se(h|r)+\b/gi,"ich liebe dich so sehr")
-      .replace(/wi[e] gehts dir/gi,"wie geht es dir")
-      .replace(/wo bist du+\b/gi,"wo bist du");
-}
-
-// Auto-Übersetzung für Anzeige im Chat
-async function translateAuto(text, targetLang){
-    for (const url of TRANSLATE_SERVERS){
-        try{
-            const res = await fetch(url,{
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body:JSON.stringify({
-                    q: text,
-                    source:"auto",
-                    target: targetLang,
-                    format:"text"
-                })
-            });
-            if(!res.ok) continue;
-            const data=await res.json();
-            if(data && data.translatedText){
-                return {
-                    translatedText:data.translatedText,
-                    detectedSource:"auto"
-                };
-            }
-        }catch(e){}
-    }
-    return {
-        translatedText:"(konnte nicht übersetzen 😢)",
-        detectedSource:"?"
-    };
-}
-
-// Chatnachricht anzeigen
-async function addMessageBubble(msg){
-    // msg = {from,color,avatar,role,text,timestamp,senderLang}
-    const isSystem = (msg.from==="System");
-
-    const wrap = document.createElement("div");
-    wrap.className="msgBubble"+(isSystem?" system":"");
-
-    // Kopfzeile
-    const head=document.createElement("div");
-    head.className="msgHeader";
-
-    const avSpan=document.createElement("span");
-    avSpan.className="avatarEmoji";
-    avSpan.textContent=msg.avatar || "💬";
-
-    const nameSpan=document.createElement("span");
-    nameSpan.className="msgHeaderName";
-    nameSpan.textContent=msg.from;
-    if(isSystem){
-        nameSpan.classList.add("systemName");
-        nameSpan.style.color="#888";
-        nameSpan.style.textShadow="none";
-    } else if(msg.color){
-        nameSpan.style.color=msg.color;
-        nameSpan.style.textShadow=`0 0 6px ${msg.color},0 0 12px #00fff6`;
-    }
-
-    head.appendChild(avSpan);
-    head.appendChild(nameSpan);
-
-    if(msg.role==="owner"||msg.role==="coOwner"||msg.role==="admin"){
-        const rSpan=document.createElement("span");
-        rSpan.className="msgHeaderRole";
-        rSpan.textContent="👑";
-        head.appendChild(rSpan);
-    }
-
-    wrap.appendChild(head);
-
-    // Original Text
-    const orig=document.createElement("div");
-    orig.className="msgOriginal";
-    orig.textContent=msg.text;
-    wrap.appendChild(orig);
-
-    // Übersetzte Version (außer System)
-    if(!isSystem && myProfile){
-        const infoLine=document.createElement("div");
-        infoLine.className="msgInfoLine";
-        infoLine.textContent="übersetze...";
-        wrap.appendChild(infoLine);
-
-        const transEl=document.createElement("div");
-        transEl.className="msgTranslation";
-        transEl.textContent="(warte...)";
-        wrap.appendChild(transEl);
-
-        const myLang = myProfile.language || "de";
-        const senderLang = msg.senderLang || "auto";
-
-        const r = await translateAuto(msg.text, myLang);
-
-        infoLine.textContent = `Übersetzt aus: ${senderLang} → ${myLang}`;
-        transEl.textContent  = r.translatedText;
-    }
-
-    // Pinke Uhrzeit unter Nachricht
-    const tDiv=document.createElement("div");
-    tDiv.className="msgTime";
-    const d = new Date(msg.timestamp || Date.now());
-    tDiv.textContent = d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    wrap.appendChild(tDiv);
-
-    messagesEl.appendChild(wrap);
-    messagesEl.scrollTop=messagesEl.scrollHeight;
-}
-
-// Online-Liste neu aufbauen
-function renderOnlineList(arr){
-    onlineList.innerHTML="";
-    arr.forEach(u=>{
-        const row=document.createElement("div");
-        row.className="userRow";
-
-        const line1=document.createElement("div");
-        line1.className="nameLine";
-
-        const av=document.createElement("span");
-        av.className="avatarEmoji";
-        av.textContent=u.avatar||"⭐";
-
-        const nm=document.createElement("span");
-        nm.textContent=u.username;
-        nm.style.color=u.color||"#fff";
-        nm.style.fontWeight="600";
-        nm.style.textShadow=`0 0 6px ${u.color||"#fff"},0 0 10px #ff4dfd`;
-
-        line1.appendChild(av);
-        line1.appendChild(nm);
-
-        if(u.role==="owner"||u.role==="coOwner"||u.role==="admin"){
-            const cr=document.createElement("span");
-            cr.className="roleCrown";
-            cr.textContent="👑";
-            line1.appendChild(cr);
+/* === 🎮 Einfaches Tic-Tac-Toe === */
+let tttBoard=null;
+function createTicTacToe(){
+  if(document.getElementById("ttt"))return;
+  const wrap=document.createElement("div");
+  wrap.id="ttt";
+  wrap.innerHTML="<h3 style='color:#ff3eb5;text-align:center;'>🎮 TicTacToe</h3>";
+  const table=document.createElement("table");
+  table.style.margin="0 auto";
+  table.style.borderCollapse="collapse";
+  table.style.boxShadow="0 0 10px #ff3eb5";
+  for(let r=0;r<3;r++){
+    const tr=document.createElement("tr");
+    for(let c=0;c<3;c++){
+      const td=document.createElement("td");
+      td.dataset.pos=r+","+c;
+      td.style.width="60px";td.style.height="60px";
+      td.style.textAlign="center";td.style.fontSize="2em";
+      td.style.border="1px solid #ff3eb5";
+      td.addEventListener("click",()=>{
+        if(!td.textContent){
+          td.textContent="❌";
+          socket.emit("ttt-move",{pos:td.dataset.pos,symbol:"❌"});
         }
-
-        const line2=document.createElement("div");
-        line2.className="metaLine";
-        line2.textContent="Sprache: "+(u.language||"?");
-
-        row.appendChild(line1);
-        row.appendChild(line2);
-
-        row.addEventListener("click", ()=>{
-            if(!myProfile) return;
-            // Admin-Panel nur, wenn ich admin/owner/coOwner bin
-            if(!(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin")){
-                return;
-            }
-            // Mich selbst nicht auswählen
-            if(myProfile.username===u.username){
-                adminTargetUser=null;
-                adminTargetEl.textContent="Kein Ziel ausgewählt";
-                return;
-            }
-
-            adminTargetUser=u.username;
-            adminTargetEl.textContent="Ziel: "+u.username;
-            adminPanel.style.display="block";
-        });
-
-        onlineList.appendChild(row);
-    });
+      });
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+  wrap.appendChild(table);
+  document.getElementById("chatArea").appendChild(wrap);
+  tttBoard=table;
 }
+document.getElementById("startGameBtn").addEventListener("click",()=>{
+  createTicTacToe();
+  socket.emit("ttt-start");
+});
 
-// Raum aktualisieren
-function renderRoom(){
-    roomArea.innerHTML="";
+socket.on("ttt-start",()=>createTicTacToe());
+socket.on("ttt-move",data=>{
+  if(tttBoard){
+    const cell=tttBoard.querySelector(`[data-pos='${data.pos}']`);
+    if(cell&&!cell.textContent)cell.textContent=data.symbol==="❌"?"⭕":"❌";
+  }
+});
 
-    // Sitzplätze anzeigen
-    if(currentRoom.seats){
-        currentRoom.seats.forEach((seat,idx)=>{
-            const spot=document.createElement("div");
-            spot.className="seatSpot";
-            spot.style.left=seat.x+"px";
-            spot.style.top=seat.y+"px";
-            spot.textContent="💺";
-            spot.addEventListener("click", ()=>{
-                if(!authToken || !myProfile) return;
-                socket.emit("sitOnSeat",{
-                    token: authToken,
-                    seatIndex: idx
-                });
-            });
-            roomArea.appendChild(spot);
-        });
-    }
+/* === 👑 Owner & Admin-Befehle === */
+socket.on("system",msg=>{
+  const chat=document.getElementById("chat");
+  const el=document.createElement("div");
+  el.className="message";
+  el.style.opacity=0.7;
+  el.innerHTML=`<em>${msg}</em>`;
+  chat.appendChild(el);
+});
+/* === 🔐 Logout & Cleanup === */
+window.addEventListener("beforeunload",()=>{
+  socket.emit("leave",{user:username});
+});
 
-    // Avatare zeichnen
-    for(const uname in currentRoom.avatars){
-        const info=currentRoom.avatars[uname];
+/* === 🦋 Verbindungssignale === */
+socket.on("connect",()=>{
+  socket.emit("spawn",{user:username});
+});
+socket.on("disconnect",()=>{
+  const el=document.createElement("div");
+  el.className="message";
+  el.innerHTML="<em>Verbindung getrennt...</em>";
+  document.getElementById("chat").appendChild(el);
+});
 
-        const box=document.createElement("div");
-        box.className="roomAvatar";
-        box.style.left = (info.x||20)+"px";
-        box.style.top  = (info.y||20)+"px";
-
-        const face=document.createElement("div");
-        face.textContent=info.avatar||"⭐";
-        face.style.textShadow=`0 0 8px ${info.color||"#fff"},0 0 12px #ff4dfd`;
-
-        const nameLine=document.createElement("div");
-        nameLine.className="roomName";
-        nameLine.style.color=info.color||"#fff";
-        nameLine.style.textShadow=`0 0 6px ${info.color||"#fff"},0 0 10px #00fff6`;
-        nameLine.textContent=uname;
-        if(info.role==="owner"||info.role==="coOwner"||info.role==="admin"){
-            const crown=document.createElement("span");
-            crown.className="roomCrown";
-            crown.textContent="👑";
-            nameLine.appendChild(crown);
-        }
-
-        box.appendChild(face);
-        box.appendChild(nameLine);
-
-        // Nur meinen eigenen Avatar darf ich ziehen
-        if(myProfile && uname===myProfile.username){
-            box.addEventListener("mousedown",(ev)=>{
-                dragging={
-                    username:uname,
-                    el:box,
-                    offsetX: ev.offsetX,
-                    offsetY: ev.offsetY
-                };
-            });
-            box.addEventListener("touchstart",(ev)=>{
-                const t=ev.touches[0];
-                const rect=box.getBoundingClientRect();
-                dragging={
-                    username:uname,
-                    el:box,
-                    offsetX: t.clientX - rect.left,
-                    offsetY: t.clientY - rect.top
-                };
-            }, {passive:false});
-        }
-
-        roomArea.appendChild(box);
-    }
+/* === 🎆 Kleine Glitzer-Animation im Hintergrund === */
+const canvas=document.createElement("canvas");
+document.body.appendChild(canvas);
+canvas.style.position="fixed";
+canvas.style.left=0;canvas.style.top=0;
+canvas.style.zIndex="-1";
+const ctx=canvas.getContext("2d");
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+window.addEventListener("resize",resize);resize();
+const stars=Array.from({length:80},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2}));
+function drawStars(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#ff3eb5";
+  stars.forEach(s=>{
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fill();
+    s.y+=0.3;if(s.y>innerHeight)s.y=0;
+  });
+  requestAnimationFrame(drawStars);
 }
+drawStars();
 
-// Avatar bewegen (Drag)
-function onMovePointer(clientX, clientY){
-    if(!dragging || !myProfile) return;
-    if(dragging.username !== myProfile.username) return;
-
-    const bounds=roomArea.getBoundingClientRect();
-    let newX=clientX-bounds.left-dragging.offsetX;
-    let newY=clientY-bounds.top -dragging.offsetY;
-
-    if(newX<0)newX=0;
-    if(newY<0)newY=0;
-    if(newX>bounds.width-40)newX=bounds.width-40;
-    if(newY>bounds.height-40)newY=bounds.height-40;
-
-    dragging.el.style.left=newX+"px";
-    dragging.el.style.top =newY+"px";
-
-    socket.emit("moveAvatar",{
-        token: authToken,
-        x:newX,
-        y:newY
-    });
-}
-window.addEventListener("mousemove",(ev)=>onMovePointer(ev.clientX,ev.clientY));
-window.addEventListener("touchmove",(ev)=>{
-    if(ev.touches&&ev.touches[0]){
-        onMovePointer(ev.touches[0].clientX,ev.touches[0].clientY);
-    }
-},{passive:false});
-window.addEventListener("mouseup",()=>{dragging=null;});
-window.addEventListener("touchend",()=>{dragging=null;});
-
-/* ===== GAME ROOM UI ===== */
-
-function renderGameState(){
-    if(!currentGame){
-        gameInfoEl.textContent="(Kein Spiel aktiv)";
-        gamePlayersEl.innerHTML="";
-        joinGameBtn.disabled=true;
-        lockGameBtn.disabled=true;
-        return;
-    }
-
-    // Info Text
-    const gameType = currentGame.type || "?";
-    const host     = currentGame.host || "?";
-    const offen    = currentGame.open ? "Offen für neue Spieler 💖" : "Gestartet / geschlossen";
-
-    gameInfoEl.textContent =
-        "Spiel: "+gameType+"\n" +
-        "Host: "+host+"\n" +
-        "Status: "+offen;
-
-    // Spieler Liste
-    gamePlayersEl.innerHTML="";
-    if(Array.isArray(currentGame.players)){
-        currentGame.players.forEach(p=>{
-            const tag=document.createElement("div");
-            tag.className="playerTag";
-            tag.textContent=p;
-            gamePlayersEl.appendChild(tag);
-        });
-    }
-
-    // Buttons aktivieren?
-    if(authToken && myProfile){
-        // join kann man, wenn Spiel offen ist
-        joinGameBtn.disabled = !currentGame.open;
-
-        // lockGame (starten/schließen) darf nur host oder owner
-        if(myProfile.username===currentGame.host || myProfile.role==="owner"){
-            lockGameBtn.disabled=false;
-        }else{
-            lockGameBtn.disabled=true;
-        }
-    }else{
-        joinGameBtn.disabled=true;
-        lockGameBtn.disabled=true;
-    }
-}
-
-// Einladung anzeigen (Popup unten rechts)
-function showInvite(inv){
-    lastInvite = inv; // {type,host}
-    invitePopupTitle.textContent = "Spiel Einladung 🕹";
-    invitePopupTxt.textContent =
-        inv.host+" lädt dich ein "+inv.type+" zu spielen.\nMitspielen?";
-    invitePopup.style.display="block";
-}
-function hideInvite(){
-    invitePopup.style.display="none";
-}
-
-/* ===== SOCKET.io ===== */
-const socket = io();
-
-// Eingehende ChatMessages
-socket.on("chatMessage",(msg)=>{
-    addMessageBubble(msg);
-});
-
-// Userliste
-socket.on("userlist",(arr)=>{
-    renderOnlineList(arr);
-});
-
-// Raum Update
-socket.on("roomUpdate",(st)=>{
-    currentRoom = st || {avatars:{},seats:[]};
-    renderRoom();
-});
-
-// Game Lobby State (Server-Broadcast)
-socket.on("gameState",(gameObj)=>{
-    currentGame = gameObj || null;
-    renderGameState();
-});
-
-// Spiel-Einladung
-socket.on("gameInvite",(inviteData)=>{
-    // inviteData={type,host,timestamp}
-    showInvite(inviteData);
-});
-
-// forceLogout
-socket.on("forceLogout",(data)=>{
-    alert(data?.reason || "Du wurdest getrennt.");
-    authToken=null;
-    myProfile=null;
-    msgInput.disabled=true;
-    sendBtn.disabled=true;
-    loginStatus.textContent="Du wurdest entfernt.";
-    adminPanel.style.display="none";
-});
-
-/* ===== LOGIN / REGISTER / PROFILE ===== */
-
-// nach login dem Server sagen "ich bin da"
-function joinChatAfterLogin(){
-    if(!authToken) return;
-    socket.emit("joinChat", authToken);
-}
-
-loginBtn.addEventListener("click", async ()=>{
-    setStatus(loginStatus,"Logge ein ...");
-    try{
-        const res=await fetch("/login",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                username: loginUser.value.trim(),
-                password: loginPass.value.trim()
-            })
-        });
-        const data=await res.json();
-        if(!data.ok){
-            setStatus(loginStatus,data.error||"Fehler",true);
-            return;
-        }
-        authToken=data.token;
-        myProfile=data.profile;
-        setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
-
-        afterLoginUI();
-        joinChatAfterLogin();
-    }catch(e){
-        setStatus(loginStatus,"Netzwerk-Fehler",true);
-    }
-});
-
-regBtn.addEventListener("click", async ()=>{
-    setStatus(regStatus,"Erstelle Account ...");
-    try{
-        const res=await fetch("/register",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                username: regUser.value.trim(),
-                password: regPass.value.trim(),
-                avatar:   regAvatar.value.trim() || "🦋",
-                color:    regColor.value,
-                language: regLang.value,
-                theme:    regTheme.value.trim() || "default"
-            })
-        });
-        const data=await res.json();
-        if(!data.ok){
-            setStatus(regStatus,data.error||"Fehler",true);
-            return;
-        }
-        setStatus(regStatus,"Account erstellt!\nRolle: "+data.role+"\nJetzt einloggen 💜");
-    }catch(e){
-        setStatus(regStatus,"Netzwerk-Fehler",true);
-    }
-});
-
-saveProfileBtn.addEventListener("click", async ()=>{
-    if(!authToken){
-        setStatus(profileStatus,"Du bist nicht eingeloggt 🙃",true);
-        return;
-    }
-    setStatus(profileStatus,"Speichere...");
-    try{
-        const res=await fetch("/profile",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                token: authToken,
-                avatar: profAvatar.value.trim(),
-                color:  profColor.value,
-                language: profLang.value,
-                theme: profTheme.value.trim()
-            })
-        });
-        const data=await res.json();
-        if(!data.ok){
-            setStatus(profileStatus,data.error||"Fehler",true);
-            return;
-        }
-        myProfile=data.profile;
-        setStatus(profileStatus,"Gespeichert 💜 Dein Style ist jetzt aktiv.");
-        // nach Profil ändern -> Buttons evtl neu aktivieren
-        renderGameState();
-    }catch(e){
-        setStatus(profileStatus,"Netzwerk-Fehler",true);
-    }
-});
-
-// nach Login UI anpassen
-function afterLoginUI(){
-    if(!myProfile) return;
-
-    msgInput.disabled=false;
-    sendBtn.disabled=false;
-
-    profAvatar.value = myProfile.avatar || "🦋";
-    profColor.value  = myProfile.color || "#ffffff";
-    profLang.value   = myProfile.language || "de";
-    profTheme.value  = myProfile.theme || "default";
-
-    setStatus(profileStatus,"Dein Profil ist geladen 💜");
-    setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
-
-    // Adminpanel nur bei owner/coOwner/admin anzeigen
-    if(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin"){
-        adminPanel.style.display="block";
-    } else {
-        adminPanel.style.display="none";
-    }
-
-    renderGameState();
-}
-
-/* ===== SPIELE STARTEN, BEITRETEN, LOCKEN ===== */
-
-ticBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    socket.emit("startGame",{ token:authToken, type:"tictactoe" });
-});
-memBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    socket.emit("startGame",{ token:authToken, type:"memory" });
-});
-
-// Einladung Popup Buttons
-inviteYesBtn.addEventListener("click",()=>{
-    hideInvite();
-    if(!authToken||!myProfile)return;
-    socket.emit("joinGame",{ token:authToken });
-});
-inviteNoBtn.addEventListener("click",()=>{
-    hideInvite();
-    // nichts tun
-});
-
-// unten im Game Room: "Mitspielen 💖"
-joinGameBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    socket.emit("joinGame",{ token:authToken });
-});
-
-// unten im Game Room: "Spiel starten / schließen"
-lockGameBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    socket.emit("lockGame",{ token:authToken });
-});
-
-/* ===== ADMIN BUTTONS ===== */
-
-// Owner fixen: holt dir die Krone zurück
-fixOwnerBtn.addEventListener("click", async ()=>{
-    if(!authToken || !myProfile) return;
-
-    adminStatus.textContent = "Versuche Owner zu fixen...";
-    adminStatus.style.color = "#8a8a9f";
-
-    try {
-        const res = await fetch("/fixOwner", {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({ token: authToken })
-        });
-        const data = await res.json();
-        if(!data.ok){
-            adminStatus.textContent = data.error || "Fehler beim Fixen";
-            adminStatus.style.color = "#ff4dfd";
-            return;
-        }
-
-        myProfile = data.profile;
-        adminStatus.textContent = "Du bist jetzt (wieder) OWNER 👑";
-        adminStatus.style.color = "#ffd93b";
-
-    } catch (e) {
-        adminStatus.textContent = "Netzwerk-Fehler beim Fixen";
-        adminStatus.style.color = "#ff4dfd";
-    }
-});
-
-makeCoOwnerBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    if(!adminTargetUser){
-        adminStatus.textContent="Kein Ziel ausgewählt";
-        adminStatus.style.color="#ff4dfd";
-        return;
-    }
-    socket.emit("promoteCoOwner",{
-        token:authToken,
-        targetUser:adminTargetUser
-    });
-});
-
-removeCoOwnerBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    if(!adminTargetUser){
-        adminStatus.textContent="Kein Ziel ausgewählt";
-        adminStatus.style.color="#ff4dfd";
-        return;
-    }
-    socket.emit("demoteToUser",{
-        token:authToken,
-        targetUser:adminTargetUser
-    });
-});
-
-kickBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    if(!adminTargetUser){
-        adminStatus.textContent="Kein Ziel ausgewählt";
-        adminStatus.style.color="#ff4dfd";
-        return;
-    }
-    socket.emit("kickUser",{
-        token:authToken,
-        targetUser:adminTargetUser
-    });
-});
-
-banBtn.addEventListener("click",()=>{
-    if(!authToken||!myProfile)return;
-    if(!adminTargetUser){
-        adminStatus.textContent="Kein Ziel ausgewählt";
-        adminStatus.style.color="#ff4dfd";
-        return;
-    }
-    socket.emit("banUser",{
-        token:authToken,
-        targetUser:adminTargetUser
-    });
-});
-
-/* ===== CHAT SENDEN ===== */
-
-// ENTER = senden, Shift+Enter = neue Zeile
-msgInput.addEventListener("keydown",(ev)=>{
-    if (ev.key === "Enter" && !ev.shiftKey){
-        ev.preventDefault();
-        if(!sendBtn.disabled){
-            sendBtn.click();
-        }
-    }
-});
-
-// SENDEN
-sendBtn.addEventListener("click", ()=>{
-    if(!authToken){
-        setStatus(loginStatus,"Bitte erst einloggen 💜",true);
-        return;
-    }
-    let txt = msgInput.value.trim();
-    if(!txt)return;
-
-    // kleine Rechtschreib-Korrektur
-    txt = fixGermanQuick(txt);
-
-    socket.emit("sendMessage",{
-        token:authToken,
-        text:txt
-    });
-
-    msgInput.value="";
-    msgInput.focus();
-});
-
-/* ===== Hilfe Sprache Umschalten ===== */
-
-helpLangSelect.addEventListener("change", ()=>{
-    const lg = helpLangSelect.value;
-    const pack = HELP_TEXT[lg] || HELP_TEXT.de;
-    helpBoxTitle.textContent = pack.title;
-    helpBoxText.textContent  = pack.body;
-});
+/* === 🩵 Fertigmeldung === */
+console.log("DeepButterflyRealm 🦋 läuft mit Google-Übersetzung, Uhrzeit, Spielen und Avataren.");
 </script>
 </body>
 </html>
+
 
