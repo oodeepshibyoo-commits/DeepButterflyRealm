@@ -328,5 +328,14 @@ console.log("DeepButterflyRealm 🦋 läuft mit Google-Übersetzung, Uhrzeit, Sp
 </script>
 </body>
 </html>
+/* === 🔧 Fix: Nur verbinden, wenn eingeloggt === */
+if (username && username.trim() !== "") {
+  socket.connect();
+  socket.emit("join", { user: username, lang: userLang, color: userColor });
+  socket.emit("spawn", { user: username });
+} else {
+  // Kein Login → Socket bleibt getrennt, keine Fehlermeldung
+  console.log("Bitte melde dich an, um zu chatten 🦋");
+}
 
 
