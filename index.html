@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DeepButterfly Realm 2.0 💜👑</title>
+<title>DeepButterfly Realm 2.1 💜👑</title>
 <style>
-/* --- Layout Grundgerüst im Neon-Dunkel-Stil --- */
+/* --- Neon Dark Layout --- */
 body{
     margin:0;
     background:#050505;
@@ -228,6 +228,11 @@ button.smallBtn:disabled{
     display:flex;
     justify-content:space-between;
     flex-wrap:wrap;
+}
+#roomSub{
+    color:#8a8a9f;
+    font-size:.65rem;
+    line-height:1.2;
 }
 #roomArea{
     position:relative;
@@ -471,7 +476,7 @@ footer{
     font-size:.7rem;
 }
 
-/* Pinke Uhr pro Nachricht (unten im Chat-Bereich) */
+/* Pinke Uhr pro Nachricht */
 .msgTime{
     font-size:.6rem;
     font-family:Consolas,Menlo,monospace;
@@ -487,7 +492,7 @@ footer{
 <div id="clockTop">--:--</div>
 
 <header>
-    <div class="big">DeepButterfly Realm 2.0 💜👑</div>
+    <div class="big">DeepButterfly Realm 2.1 💜👑</div>
     <div class="sub">Multilingual · Owner-Krone · Avatare bewegen · Sitzen · Spiele · Uhrzeit 💖</div>
 </header>
 
@@ -604,6 +609,7 @@ Owner & CoOwner/Admin können kicken/bannen.
         <div id="adminPanel" style="display:none;">
             <div class="targetName">Kein Ziel ausgewählt</div>
             <button class="smallBtn" id="makeCoOwnerBtn">👑 Mitbesitzer machen</button>
+            <button class="smallBtn" id="removeCoOwnerBtn">💔 Mitbesitzer entfernen</button>
             <button class="smallBtn" id="kickBtn">🚫 Kicken</button>
             <button class="smallBtn" id="banBtn">❌ Bannen</button>
             <div class="statusLine" id="adminStatus"></div>
@@ -621,10 +627,8 @@ Owner & CoOwner/Admin können kicken/bannen.
 <!-- RAUM OBEN -->
 <div id="roomWrap">
     <div id="roomTitle">
-        <span>Butterfly Room 🦋 Bewegen oder auf Sitz klicken 💺</span>
-        <span style="color:#8a8a9f;font-size:.65rem;line-height:1.2;">
-            Zieh dich wohin du willst 💖 (oder setz dich)
-        </span>
+        <span>Butterfly Room 🦋</span>
+        <span id="roomSub">Zieh dich wohin du willst 💖 oder setz dich 💺</span>
     </div>
     <div id="roomArea"></div>
 </div>
@@ -642,7 +646,7 @@ Owner & CoOwner/Admin können kicken/bannen.
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-// ===== Sprachdaten =====
+// ================== Sprachdaten ==================
 const LANGS = [
     {code:"de", name:"Deutsch"},
     {code:"hu", name:"Magyar / Ungarisch"},
@@ -698,7 +702,7 @@ Owner & CoOwner/Admin can kick / ban people.`
 Az első felhasználó lesz az Owner 👑.
 Az Owner / CoOwner / Admin ki tud rúgni vagy tiltani másokat.`
   }
-  // Du kannst für mehr Sprachen später ergänzen
+  // Weitere Sprachen kannst du später hier ergänzen
 };
 
 // ===== Übersetzungsserver Liste =====
@@ -708,7 +712,7 @@ const TRANSLATE_SERVERS = [
     "https://translate.fedilab.app/translate"
 ];
 
-// === DOM ===
+// ===== DOM ELEMENTE =====
 const loginUser    = document.getElementById("loginUser");
 const loginPass    = document.getElementById("loginPass");
 const loginBtn     = document.getElementById("loginBtn");
@@ -737,7 +741,8 @@ const helpBoxText    = document.getElementById("helpBoxText");
 const onlineList   = document.getElementById("onlineList");
 const adminPanel   = document.getElementById("adminPanel");
 const adminStatus  = document.getElementById("adminStatus");
-const makeCoOwnerBtn = document.getElementById("makeCoOwnerBtn");
+const makeCoOwnerBtn   = document.getElementById("makeCoOwnerBtn");
+const removeCoOwnerBtn = document.getElementById("removeCoOwnerBtn");
 const kickBtn      = document.getElementById("kickBtn");
 const banBtn       = document.getElementById("banBtn");
 const adminTargetEl= adminPanel.querySelector(".targetName");
@@ -752,14 +757,16 @@ const msgInput     = document.getElementById("msgInput");
 const sendBtn      = document.getElementById("sendBtn");
 const clockTopEl   = document.getElementById("clockTop");
 
-// === STATE ===
+// ===== STATE =====
 let authToken = null;
 let myProfile = null;
 let dragging  = null; // { username, el, offsetX, offsetY }
 let currentRoom = { avatars: {}, seats: [] };
 let adminTargetUser = null;
 
-// helper: füllt Sprach-Selects
+// ===== Hilfsfunktionen =====
+
+// Sprachwahl-Selects füllen
 function fillLangSelect(sel){
     LANGS.forEach(l=>{
         const o=document.createElement("option");
@@ -781,13 +788,13 @@ function updateClockTop(){
 setInterval(updateClockTop,1000);
 updateClockTop();
 
-// helper: Status anzeigen
+// Statusmeldung helper
 function setStatus(el, msg, isErr=false){
     el.textContent = msg;
     el.style.color = isErr ? "#ff4dfd" : "#8a8a9f";
 }
 
-// Schnellkorrektur für Tippfehler Deutsch
+// kleine Rechtschreib-Korrektur Deutsch
 function fixGermanQuick(t){
     return t
       .replace(/\bich libe dich\b/gi,"ich liebe dich")
@@ -796,8 +803,8 @@ function fixGermanQuick(t){
       .replace(/wo bist du+\b/gi,"wo bist du");
 }
 
-// Übersetzen (Client-Seite)
-// gibt {translatedText, detectedSourceLang}
+// Auto-Übersetzung für Anzeige der Chat-Bubble
+// -> gibt {translatedText, detectedSource}
 async function translateAuto(text, targetLang){
     for (const url of TRANSLATE_SERVERS){
         try{
@@ -816,7 +823,7 @@ async function translateAuto(text, targetLang){
             if(data && data.translatedText){
                 return {
                     translatedText:data.translatedText,
-                    detectedSource:"auto" // libretranslate gibt "detectedLanguage" nicht immer sauber zurück
+                    detectedSource:"auto" // manche Server geben das nicht zurück korrekt
                 };
             }
         }catch(e){}
@@ -827,15 +834,15 @@ async function translateAuto(text, targetLang){
     };
 }
 
-// Chat-Bubble bauen
+// Nachricht ins Chatfenster einbauen
 async function addMessageBubble(msg){
-    // msg = {from,color,avatar,role,text,timestamp,originalLang}
+    // msg = {from,color,avatar,role,text,timestamp,senderLang}
     const isSystem = (msg.from==="System");
 
     const wrap = document.createElement("div");
     wrap.className="msgBubble"+(isSystem?" system":"");
 
-    // header
+    // Kopfzeile
     const head=document.createElement("div");
     head.className="msgHeader";
 
@@ -873,7 +880,7 @@ async function addMessageBubble(msg){
     orig.textContent=msg.text;
     wrap.appendChild(orig);
 
-    // Übersetzung nur wenn nicht System und ich eingeloggt
+    // Übersetzung (nicht für System, nur wenn ich eingeloggt bin)
     if(!isSystem && myProfile){
         const infoLine=document.createElement("div");
         infoLine.className="msgInfoLine";
@@ -885,15 +892,21 @@ async function addMessageBubble(msg){
         transEl.textContent="(warte...)";
         wrap.appendChild(transEl);
 
-        // wir übersetzen in meine Sprache
+        // meine Sprache
         const myLang = myProfile.language || "de";
+        // Sprache vom Sender
+        const senderLang = msg.senderLang || "auto";
+
+        // übersetzen
         const r = await translateAuto(msg.text, myLang);
 
-        infoLine.textContent = `Übersetzt aus: ${r.detectedSource} → ${myLang}`;
+        // Zeile wie du sie willst:
+        // "Übersetzt aus: EN → DE"
+        infoLine.textContent = `Übersetzt aus: ${senderLang} → ${myLang}`;
         transEl.textContent  = r.translatedText;
     }
 
-    // Uhrzeit unter der Nachricht (Pink)
+    // Uhrzeit unter der Nachricht, pink
     const tDiv=document.createElement("div");
     tDiv.className="msgTime";
     const d = new Date(msg.timestamp || Date.now());
@@ -904,7 +917,7 @@ async function addMessageBubble(msg){
     messagesEl.scrollTop=messagesEl.scrollHeight;
 }
 
-// Online-Liste rendern + Adminpanel target setzen
+// Online-Liste rendern und Admin-Panel Ziel setzen
 function renderOnlineList(arr){
     onlineList.innerHTML="";
     arr.forEach(u=>{
@@ -943,11 +956,11 @@ function renderOnlineList(arr){
 
         row.addEventListener("click", ()=>{
             if(!myProfile) return;
-            // Nur Admin/CoOwner/Owner darf Panel sehen
+            // Adminpanel nur wenn ich Admin/CoOwner/Owner bin
             if(!(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin")){
                 return;
             }
-            // Nicht sich selbst als Ziel?
+            // Nicht mich selbst auswählen
             if(myProfile.username===u.username){
                 adminTargetUser=null;
                 adminTargetEl.textContent="Kein Ziel ausgewählt";
@@ -963,7 +976,7 @@ function renderOnlineList(arr){
     });
 }
 
-// Raum rendern inkl. Sitze
+// Raum rendern mit Sitzen und Avataren
 function renderRoom(){
     roomArea.innerHTML="";
 
@@ -975,7 +988,6 @@ function renderRoom(){
             spot.style.left=seat.x+"px";
             spot.style.top=seat.y+"px";
             spot.textContent="💺";
-            // click -> hinsetzen
             spot.addEventListener("click", ()=>{
                 if(!authToken || !myProfile) return;
                 socket.emit("sitOnSeat",{
@@ -987,7 +999,7 @@ function renderRoom(){
         });
     }
 
-    // Avatare
+    // Avatare zeichnen
     for(const uname in currentRoom.avatars){
         const info=currentRoom.avatars[uname];
 
@@ -1015,7 +1027,7 @@ function renderRoom(){
         box.appendChild(face);
         box.appendChild(nameLine);
 
-        // Nur mein eigener Avatar darf gezogen werden
+        // Nur mein eigener Avatar ist draggable
         if(myProfile && uname===myProfile.username){
             box.addEventListener("mousedown",(ev)=>{
                 dragging={
@@ -1041,7 +1053,7 @@ function renderRoom(){
     }
 }
 
-// Avatar ziehen
+// Avatar verschieben
 function onMovePointer(clientX, clientY){
     if(!dragging || !myProfile) return;
     if(dragging.username !== myProfile.username) return;
@@ -1073,7 +1085,7 @@ window.addEventListener("touchmove",(ev)=>{
 window.addEventListener("mouseup",()=>{dragging=null;});
 window.addEventListener("touchend",()=>{dragging=null;});
 
-// SOCKET
+// SOCKET.io
 const socket = io();
 
 // eingehende ChatMessages
@@ -1105,13 +1117,12 @@ socket.on("forceLogout",(data)=>{
 
 // game started
 socket.on("gameStarted",(g)=>{
-    // nur Anzeige, wer was gestartet hat
     const text=`Spiel gestartet: ${g.type} von ${g.startedBy}`;
     gameStatus.textContent=text;
     gameStatus.style.color="#00fff6";
 });
 
-// nach login joinChat
+// nach login socket join
 function joinChatAfterLogin(){
     if(!authToken) return;
     socket.emit("joinChat", authToken);
@@ -1203,7 +1214,7 @@ saveProfileBtn.addEventListener("click", async ()=>{
     }
 });
 
-// SPIEL STARTEN (nur admin/owner/coOwner)
+// SPIELE STARTEN
 ticBtn.addEventListener("click",()=>{
     if(!authToken||!myProfile)return;
     socket.emit("startGame",{ token:authToken, type:"tictactoe" });
@@ -1226,6 +1237,20 @@ makeCoOwnerBtn.addEventListener("click",()=>{
         targetUser:adminTargetUser
     });
 });
+
+removeCoOwnerBtn.addEventListener("click",()=>{
+    if(!authToken||!myProfile)return;
+    if(!adminTargetUser){
+        adminStatus.textContent="Kein Ziel ausgewählt";
+        adminStatus.style.color="#ff4dfd";
+        return;
+    }
+    socket.emit("demoteToUser",{
+        token:authToken,
+        targetUser:adminTargetUser
+    });
+});
+
 kickBtn.addEventListener("click",()=>{
     if(!authToken||!myProfile)return;
     if(!adminTargetUser){
@@ -1238,6 +1263,7 @@ kickBtn.addEventListener("click",()=>{
         targetUser:adminTargetUser
     });
 });
+
 banBtn.addEventListener("click",()=>{
     if(!authToken||!myProfile)return;
     if(!adminTargetUser){
@@ -1251,7 +1277,7 @@ banBtn.addEventListener("click",()=>{
     });
 });
 
-// NACH LOGIN UI AKTIVIEREN
+// nach Login UI freischalten
 function afterLoginUI(){
     if(!myProfile) return;
 
@@ -1274,7 +1300,7 @@ function afterLoginUI(){
     }
 }
 
-// ENTER zum Senden
+// ENTER = senden, Shift+Enter = neue Zeile
 msgInput.addEventListener("keydown",(ev)=>{
     if (ev.key === "Enter" && !ev.shiftKey){
         ev.preventDefault();
@@ -1293,19 +1319,20 @@ sendBtn.addEventListener("click", ()=>{
     let txt = msgInput.value.trim();
     if(!txt)return;
 
+    // deutsche Schnellkorrektur
     txt = fixGermanQuick(txt);
 
     socket.emit("sendMessage",{
         token:authToken,
-        text:txt,
-        originalLang: myProfile ? (myProfile.language || "auto") : "auto"
+        text:txt
+        // Sprache des Senders hängt der Server an (senderLang)
     });
 
     msgInput.value="";
     msgInput.focus();
 });
 
-// Hilfe-Sprache ändern
+// Hilfe-Sprache Textbox umstellen
 helpLangSelect.addEventListener("change", ()=>{
     const lg = helpLangSelect.value;
     const pack = HELP_TEXT[lg] || HELP_TEXT.de;
@@ -1315,5 +1342,4 @@ helpLangSelect.addEventListener("change", ()=>{
 </script>
 </body>
 </html>
-
 
