@@ -1,17 +1,12 @@
-// DeepButterfly Realm 2.1 Server 💜
-// Features:
-// - Registrierung + Login (username+passwort)
-// - Rollen: owner 👑, coOwner 👑, admin 👑, user
-//   * Erster Account wird owner
-//   * owner kann andere zu coOwner machen
-//   * owner kann coOwner wieder zurück zu user machen
-// - Kick / Bann (owner + coOwner + admin dürfen kicken/bannen, aber niemand darf owner anfassen)
-// - Bannliste: Gebannte können nicht mehr rein
-// - Online-Liste in Echtzeit
-// - Raum mit Avataren (x,y) und Sitzplätzen
-// - Chat mit Socket.io Broadcast
-// - server sendet bei jeder Nachricht auch senderLang (Sprache des Senders)
-// - Spielstart-Events (TicTacToe / Memory)
+// DeepButterfly Realm 3.0 Server 💜
+// Neu:
+// - fester OWNER (DeepButterflyMusic bleibt immer Owner 👑)
+// - Owner-Fix-Button
+// - CoOwner geben/wegnehmen
+// - Kick/Ban
+// - Avatare bewegen / Sitzplätze
+// - Mehrsprach-Chat mit senderLang
+// - Spiel-Lobby / Einladungen zu Spielen
 
 const express = require("express");
 const path = require("path");
@@ -24,11 +19,12 @@ const { Server } = require("socket.io");
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = "deepbutterfly-secret-change-this";
 
-// App Setup
+// 💜 DAS IST DIE KÖNIGIN. DIESER NAME IST IMMER OWNER.
+const MASTER_OWNER_NAME = "DeepButterflyMusic";
+
 const app = express();
 app.use(express.json());
 app.use(cors());
-// Statische Dateien ausliefern (index.html usw.)
 app.use(express.static(path.join(__dirname)));
 
 const http = httpServer(app);
@@ -36,11 +32,13 @@ const io = new Server(http, {
   cors: { origin: "*" }
 });
 
-// "Speicher" im RAM (Free-Host: wird gelöscht wenn Server neu startet)
+// "Datenbank" im RAM
 const users = {};          // username -> { username, passHash, avatar, color, language, theme, role }
 const banned = {};         // username -> true
 const socketsByUser = {};  // username -> Set(socketId)
 const userBySocket = {};   // socketId -> username
+
+// Raum (Avatare)
 const roomState = {};      // username -> { x,y,seatIndex, avatar,color,role }
 const seats = [
   { x: 60,  y: 110 },
@@ -49,7 +47,15 @@ const seats = [
   { x: 240, y: 110 }
 ];
 
-// Hilfsfunktionen
+// Spielsystem (ganz basic Lobby)
+let currentGame = null;
+// currentGame = {
+//   type: "tictactoe" | "memory",
+//   host: "DeepButterflyMusic",
+//   players: ["DeepButterflyMusic"],
+//   open: true // kann man noch joinen?
+// }
+
 function publicUser(u) {
   return {
     username: u.username,
@@ -61,6 +67,7 @@ function publicUser(u) {
   };
 }
 
+// Rollen-Helper
 function isOwner(u) {
   return u && u.role === "owner";
 }
@@ -71,35 +78,54 @@ function isAdmin(u) {
   return u && (u.role === "admin" || isCoOwner(u) || isOwner(u));
 }
 function canPromoteToCoOwner(actor) {
-  // nur owner darf CoOwner vergeben
-  return isOwner(actor);
+  return isOwner(actor); // nur Owner darf CoOwner geben
 }
 function canDemoteFromCoOwner(actor) {
-  // nur owner darf CoOwner zurückstufen
-  return isOwner(actor);
+  return isOwner(actor); // nur Owner darf CoOwner wegnehmen
 }
 function canKickBan(actor) {
-  // owner, coOwner, admin dürfen kicken/bannen
-  return isAdmin(actor);
+  return isAdmin(actor); // owner/coOwner/admin
 }
 
-// nach jeder Änderung -> an alle schicken
+// Allen den Online-Status + Raum schicken
 function broadcastUserListAndRoom() {
+  // Online-Liste
   const list = Object.keys(socketsByUser).map(username => publicUser(users[username]));
   io.emit("userlist", list);
 
-  // Sitz-Position berücksichtigen
+  // Raum (Avatare setzen)
   const stateToSend = {};
   for (const uname in roomState) {
     const entry = { ...roomState[uname] };
     if (typeof entry.seatIndex === "number" && seats[entry.seatIndex]) {
-        entry.x = seats[entry.seatIndex].x;
-        entry.y = seats[entry.seatIndex].y;
+      entry.x = seats[entry.seatIndex].x;
+      entry.y = seats[entry.seatIndex].y;
     }
     stateToSend[uname] = entry;
   }
+
   io.emit("roomUpdate", { avatars: stateToSend, seats });
+
+  // Game Lobby Info
+  broadcastGameState();
 }
+
+// Owner erzwingen: MASTER_OWNER_NAME ist IMMER owner
+function enforceMasterOwner() {
+  const u = users[MASTER_OWNER_NAME];
+  if (!u) return;
+  u.role = "owner";
+  if (roomState[u.username]) {
+    roomState[u.username].role = "owner";
+  }
+}
+
+// Spiel-Lobby an alle senden
+function broadcastGameState() {
+  io.emit("gameState", currentGame);
+}
+
+// ====== REST API ======
 
 // Registrierung
 app.post("/register", async (req, res) => {
@@ -114,8 +140,12 @@ app.post("/register", async (req, res) => {
     return res.status(403).json({ error: "Dieser Name ist gebannt." });
   }
 
-  const isFirst = Object.keys(users).length === 0;
-  const role = isFirst ? "owner" : "user";
+  // Standardrolle
+  let role = "user";
+  // Wenn das der MASTER_OWNER_NAME ist → immer owner
+  if (username === MASTER_OWNER_NAME) {
+    role = "owner";
+  }
 
   const passHash = await bcrypt.hash(password, 10);
 
@@ -129,7 +159,6 @@ app.post("/register", async (req, res) => {
     role
   };
 
-  // Raum initial
   roomState[username] = {
     x: Math.floor(Math.random() * 220) + 20,
     y: Math.floor(Math.random() * 100) + 20,
@@ -139,10 +168,13 @@ app.post("/register", async (req, res) => {
     role: users[username].role
   };
 
+  // Safety Owner
+  enforceMasterOwner();
+
   return res.json({
     ok: true,
     message: "Account erstellt",
-    role
+    role: users[username].role
   });
 });
 
@@ -166,6 +198,9 @@ app.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Falsches Passwort" });
   }
 
+  // Owner fix bei jedem Login:
+  enforceMasterOwner();
+
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" });
 
   if (!roomState[username]) {
@@ -186,7 +221,7 @@ app.post("/login", async (req, res) => {
   });
 });
 
-// Profil ändern (Avatar, Farbe, Sprache, Theme)
+// Profil ändern
 app.post("/profile", (req, res) => {
   const { token, avatar, color, language, theme } = req.body || {};
   if (!token) return res.status(401).json({ error: "kein token" });
@@ -194,6 +229,7 @@ app.post("/profile", (req, res) => {
     const data = jwt.verify(token, JWT_SECRET);
     const u = users[data.username];
     if (!u) return res.status(400).json({ error: "user nicht gefunden" });
+
     if (avatar !== undefined) u.avatar = avatar;
     if (color !== undefined) u.color = color;
     if (language !== undefined) u.language = language;
@@ -205,6 +241,7 @@ app.post("/profile", (req, res) => {
       roomState[u.username].role = u.role;
     }
 
+    enforceMasterOwner();
     broadcastUserListAndRoom();
 
     return res.json({ ok: true, profile: publicUser(u) });
@@ -213,11 +250,49 @@ app.post("/profile", (req, res) => {
   }
 });
 
-// Socket-Verbindungen
+// Owner-Fix Button (falls dich jemand überholt hat)
+app.post("/fixOwner", (req, res) => {
+  const { token } = req.body || {};
+  if (!token) return res.status(401).json({ error: "kein token" });
+  try {
+    const data = jwt.verify(token, JWT_SECRET);
+    const u = users[data.username];
+    if (!u) return res.status(400).json({ error: "user nicht gefunden" });
+
+    // Nur die Königin selber darf das
+    if (u.username !== MASTER_OWNER_NAME) {
+        return res.status(403).json({ error: "Nicht erlaubt" });
+    }
+
+    // Mach sie Owner
+    u.role = "owner";
+    if (roomState[u.username]) {
+      roomState[u.username].role = "owner";
+    }
+
+    // Falls jemand anders 'owner' hatte, wird der runtergestuft zu 'coOwner'
+    for (const name in users) {
+      if (name !== MASTER_OWNER_NAME && users[name].role === "owner") {
+        users[name].role = "coOwner";
+        if (roomState[name]) {
+          roomState[name].role = "coOwner";
+        }
+      }
+    }
+
+    broadcastUserListAndRoom();
+    return res.json({ ok: true, profile: publicUser(u) });
+  } catch (e) {
+    return res.status(401).json({ error: "token ungültig" });
+  }
+});
+
+// ====== SOCKET.IO ======
+
 io.on("connection", (socket) => {
   console.log("Verbunden:", socket.id);
 
-  // joinChat
+  // User betritt Chat
   socket.on("joinChat", (token) => {
     try {
       const data = jwt.verify(token, JWT_SECRET);
@@ -228,6 +303,9 @@ io.on("connection", (socket) => {
         socket.disconnect(true);
         return;
       }
+
+      // Safety
+      enforceMasterOwner();
 
       userBySocket[socket.id] = u.username;
       if (!socketsByUser[u.username]) socketsByUser[u.username] = new Set();
@@ -255,31 +333,33 @@ io.on("connection", (socket) => {
         timestamp: Date.now(),
         senderLang: "system"
       });
-
     } catch (e) {
-      console.log("joinChat token ungültig/fehlt");
+      console.log("joinChat fail", e);
     }
   });
 
-  // Avatar frei bewegen
+  // Avatar bewegen
   socket.on("moveAvatar", (payload) => {
-    // payload: { token, x, y }
     if (!payload || !payload.token) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const u = users[data.username];
       if (!u || banned[u.username]) return;
 
+      enforceMasterOwner();
+
       if (!roomState[u.username]) {
         roomState[u.username] = {
-          x: 50, y: 50, seatIndex: null,
+          x: 50,
+          y: 50,
+          seatIndex: null,
           avatar: u.avatar,
           color: u.color,
           role: u.role
         };
       }
 
-      roomState[u.username].seatIndex = null; // verlässt Sitz
+      roomState[u.username].seatIndex = null;
       roomState[u.username].x = payload.x;
       roomState[u.username].y = payload.y;
       roomState[u.username].avatar = u.avatar;
@@ -292,14 +372,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Auf Sitz setzen
+  // Sitz nehmen
   socket.on("sitOnSeat", (payload) => {
-    // payload: { token, seatIndex }
     if (!payload || !payload.token) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const u = users[data.username];
       if (!u || banned[u.username]) return;
+
+      enforceMasterOwner();
+
       const idx = payload.seatIndex;
       if (typeof idx !== "number") return;
       if (!seats[idx]) return;
@@ -328,14 +410,15 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Chatnachricht senden -> Server broadcastet + hängt senderLang an
+  // Chatnachricht
   socket.on("sendMessage", (payload) => {
-    // payload: { token, text }
     if (!payload || !payload.token || !payload.text) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const u = users[data.username];
       if (!u || banned[u.username]) return;
+
+      enforceMasterOwner();
 
       io.emit("chatMessage", {
         from: u.username,
@@ -351,19 +434,130 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Mitbesitzer vergeben
+  // NEU: Spiel starten (macht eine offene Einladung/Lobby)
+  socket.on("startGame", (payload) => {
+    // { token, type: "tictactoe"|"memory" }
+    if (!payload || !payload.token || !payload.type) return;
+    try {
+      const data = jwt.verify(payload.token, JWT_SECRET);
+      const acting = users[data.username];
+      if (!acting) return;
+
+      enforceMasterOwner();
+
+      // Spiele starten dürfen Admin/CoOwner/Owner
+      if (!isAdmin(acting)) return;
+
+      currentGame = {
+        type: payload.type,
+        host: acting.username,
+        players: [acting.username],
+        open: true,
+        startedAt: Date.now()
+      };
+
+      broadcastUserListAndRoom();
+
+      // Chat-Info "möchtest du spielen?"
+      io.emit("gameInvite", {
+        type: payload.type,
+        host: acting.username,
+        timestamp: Date.now()
+      });
+
+      io.emit("chatMessage", {
+        from: "System",
+        color: "#00fff6",
+        avatar: "🕹",
+        role: "system",
+        text: acting.username + " hat ein Spiel gestartet: "+payload.type+"! Willst du mitspielen?",
+        timestamp: Date.now(),
+        senderLang: "system"
+      });
+
+    } catch (e) {
+      console.log("startGame fail", e);
+    }
+  });
+
+  // Spieler nimmt Einladung an
+  socket.on("joinGame", (payload) => {
+    // { token }
+    if (!payload || !payload.token) return;
+    try {
+      const data = jwt.verify(payload.token, JWT_SECRET);
+      const u = users[data.username];
+      if (!u || banned[u.username]) return;
+
+      enforceMasterOwner();
+
+      if (!currentGame || !currentGame.open) return;
+      if (!currentGame.players.includes(u.username)) {
+        currentGame.players.push(u.username);
+        broadcastGameState();
+      }
+
+      io.emit("chatMessage", {
+        from: "System",
+        color: "#00fff6",
+        avatar: "🕹",
+        role: "system",
+        text: u.username + " ist dem Spiel beigetreten.",
+        timestamp: Date.now(),
+        senderLang: "system"
+      });
+    } catch (e) {
+      console.log("joinGame fail", e);
+    }
+  });
+
+  // Owner / Host kann Spiel "locken" (starten richtig)
+  socket.on("lockGame", (payload) => {
+    // { token }
+    if(!payload || !payload.token) return;
+    try {
+      const data = jwt.verify(payload.token, JWT_SECRET);
+      const acting = users[data.username];
+      if(!acting) return;
+
+      enforceMasterOwner();
+
+      if(!currentGame) return;
+      // nur Host oder Owner darf locken
+      if(acting.username !== currentGame.host && !isOwner(acting)) return;
+
+      currentGame.open = false;
+      broadcastGameState();
+
+      io.emit("chatMessage", {
+        from:"System",
+        color:"#ffd93b",
+        avatar:"🕹",
+        role:"system",
+        text:"Spiel ist jetzt gestartet / geschlossen für neue Spieler.",
+        timestamp:Date.now(),
+        senderLang:"system"
+      });
+    } catch(e){
+      console.log("lockGame fail",e);
+    }
+  });
+
+  // ADMIN: Mitbesitzer geben
   socket.on("promoteCoOwner", (payload) => {
-    // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const acting = users[data.username];
       if (!acting) return;
+
+      enforceMasterOwner();
+
       if (!canPromoteToCoOwner(acting)) return; // nur owner
 
       const t = users[payload.targetUser];
       if (!t) return;
-      if (isOwner(t)) return; // owner bleibt owner
+      if (isOwner(t)) return;
       t.role = "coOwner";
 
       if (roomState[t.username]) {
@@ -386,20 +580,21 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Mitbesitzer entfernen (zurück zu user)
+  // ADMIN: Mitbesitzer entfernen
   socket.on("demoteToUser", (payload) => {
-    // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const acting = users[data.username];
       if (!acting) return;
-      // nur owner darf coOwner runterstufen
-      if (!canDemoteFromCoOwner(acting)) return;
+
+      enforceMasterOwner();
+
+      if (!canDemoteFromCoOwner(acting)) return; // nur owner
 
       const t = users[payload.targetUser];
       if (!t) return;
-      if (isOwner(t)) return; // owner bleibt owner
+      if (isOwner(t)) return;
       t.role = "user";
 
       if (roomState[t.username]) {
@@ -424,18 +619,20 @@ io.on("connection", (socket) => {
 
   // Kick
   socket.on("kickUser", (payload) => {
-    // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const acting = users[data.username];
       if (!acting) return;
+
+      enforceMasterOwner();
+
       if (!canKickBan(acting)) return;
 
       const targetName = payload.targetUser;
       const targetUser = users[targetName];
       if (!targetUser) return;
-      if (isOwner(targetUser)) return; // owner nicht kicken
+      if (isOwner(targetUser)) return; // owner nie kicken
 
       if (socketsByUser[targetName]) {
         for (const sid of socketsByUser[targetName]) {
@@ -458,14 +655,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Bann
+  // Ban
   socket.on("banUser", (payload) => {
-    // { token, targetUser }
     if (!payload || !payload.token || !payload.targetUser) return;
     try {
       const data = jwt.verify(payload.token, JWT_SECRET);
       const acting = users[data.username];
       if (!acting) return;
+
+      enforceMasterOwner();
+
       if (!canKickBan(acting)) return;
 
       const targetName = payload.targetUser;
@@ -493,28 +692,6 @@ io.on("connection", (socket) => {
       });
     } catch (e) {
       console.log("banUser fail", e);
-    }
-  });
-
-  // Spiele starten
-  socket.on("startGame", (payload) => {
-    // { token, type: "tictactoe" | "memory" }
-    if (!payload || !payload.token || !payload.type) return;
-    try {
-      const data = jwt.verify(payload.token, JWT_SECRET);
-      const acting = users[data.username];
-      if (!acting) return;
-      // nur Admin/Owner/CoOwner
-      if (!isAdmin(acting)) return;
-
-      io.emit("gameStarted", {
-        type: payload.type,
-        startedBy: acting.username,
-        timestamp: Date.now()
-      });
-
-    } catch (e) {
-      console.log("startGame fail", e);
     }
   });
 
@@ -547,7 +724,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Server starten
 http.listen(PORT, () => {
   console.log("Server läuft auf Port " + PORT);
   console.log("Bereit ✨");
