@@ -1,308 +1,326 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DeepButterflyRealm 🦋</title>
-
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DeepButterfly Realm 3.0 💜👑</title>
 <style>
-/* ==== 🌑 Neon-Dunkel-Design ==== */
-body {
-  margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at top, #050009, #0a0018 70%);
-  color:#fff;
-  overflow:hidden;
+/* --- Neon Dark Layout --- */
+body{
+    margin:0;
+    background:#050505;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+    display:grid;
+    grid-template-columns:260px 1fr;
+    grid-template-rows:auto 220px 1fr auto auto;
+    grid-template-areas:
+        "side head"
+        "side room"
+        "side chat"
+        "side input"
+        "side game";
+    height:100vh;
+    overflow:hidden;
+    position:relative;
 }
-#topbar {
-  position:fixed; top:0; left:0; right:0;
-  height:50px; display:flex; align-items:center;
-  justify-content:space-between;
-  padding:0 20px;
-  background:rgba(30,0,40,0.7);
-  border-bottom:1px solid #ff3eb5;
-  box-shadow:0 0 10px #ff3eb5;
-}
-#clockTop { color:#ff3eb5; font-weight:bold; }
-#main { display:flex; height:calc(100vh - 50px); margin-top:50px; }
-#sidebar {
-  width:250px;
-  background:rgba(20,0,40,0.7);
-  border-right:1px solid #ff3eb5;
-  display:flex; flex-direction:column; padding:10px;
-}
-#sidebar.hidden { display:none; }
-#sidebar h2 { color:#ff3eb5; text-align:center; }
-#chatArea { flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:10px; }
-#chat { flex:1; overflow-y:auto; padding-right:10px; }
-.message {
-  background:rgba(255,62,181,0.1);
-  border:1px solid rgba(255,62,181,0.3);
-  margin:5px 0; padding:6px 10px;
-  border-radius:10px;
-}
-.message strong { color:#ff3eb5; }
-.meta { font-size:0.8em; color:#aaa; }
-#msgInput {
-  width:100%; padding:10px;
-  background:#15001e; color:#fff;
-  border:1px solid #ff3eb5;
-  border-radius:10px; outline:none;
-}
-#clockBottom { color:#ff3eb5; text-align:right; font-size:0.9em; margin-top:3px; }
-button {
-  background:#ff3eb5; color:#fff; border:none;
-  border-radius:10px; padding:6px 12px; margin:3px 0;
-  cursor:pointer; font-weight:bold;
-}
-button:hover { background:#ff73cc; }
 
-/* Avatar-Spielbereich */
-#gameArea {
-  position:relative; width:100%; height:300px;
-  background:rgba(255,62,181,0.05);
-  border:1px solid rgba(255,62,181,0.3);
-  border-radius:15px; margin-top:10px; overflow:hidden;
+/* Pinke Neon-Uhr oben rechts */
+#clockTop{
+    position:fixed;
+    right:20px;
+    top:10px;
+    z-index:9999;
+    color:#ff4dfd;
+    font-size:.7rem;
+    font-weight:600;
+    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
+    font-family:Consolas,Menlo,monospace;
 }
-.avatar {
-  position:absolute; width:50px; height:50px;
-  border-radius:50%;
-  background:radial-gradient(circle,#ff3eb5,#900090);
-  display:flex; align-items:center; justify-content:center;
-  font-size:1.3em;
+
+/* HEADER */
+header{
+    grid-area:head;
+    background:#1a1a24cc;
+    border-bottom:2px solid #6b00ff;
+    box-shadow:0 20px 60px rgba(255,77,253,.25),
+               0 0 40px rgba(0,255,246,.25),
+               0 0 120px rgba(107,0,255,.4);
+    padding:.75rem 1rem;
+    font-size:.8rem;
+    line-height:1.4;
+    text-align:center;
+    z-index:10;
 }
+header .big{
+    color:#ff4dfd;
+    font-weight:600;
+    text-shadow:0 0 10px #ff4dfd,0 0 20px #00fff6;
+}
+header .sub{
+    color:#00fff6;
+    font-size:.7rem;
+    text-shadow:0 0 6px #00fff6;
+}
+
+/* SIDEBAR */
+aside{
+    grid-area:side;
+    background:#1a1a24dd;
+    border-right:2px solid #6b00ff;
+    box-shadow:0 0 30px rgba(255,77,253,.3),
+               0 0 80px rgba(0,255,246,.2);
+    padding:.75rem;
+    font-size:.75rem;
+    overflow-y:auto;
+    z-index:10;
+}
+h2{
+    margin:.5rem 0 .25rem;
+    font-size:.75rem;
+    font-weight:600;
+    color:#ff4dfd;
+    text-shadow:0 0 6px #ff4dfd,0 0 10px #00fff6;
+}
+small{
+    color:#8a8a9f;
+    font-size:.7rem;
+    line-height:1.4;
+    display:block;
+    margin-bottom:.5rem;
+}
+.block{
+    border:2px solid #6b00ff;
+    border-radius:10px;
+    background:#2a2a38aa;
+    box-shadow:0 0 16px rgba(107,0,255,.4),
+               0 0 32px rgba(0,255,246,.2);
+    padding:.5rem .75rem;
+    margin-bottom:1rem;
+    font-size:.7rem;
+    line-height:1.4;
+}
+
+/* BUTTONS */
+button.btn,button.smallBtn{
+    background:radial-gradient(circle at 20% 20%, #ff4dfd 0%, #6b00ff 60%);
+    border:0;
+    border-radius:8px;
+    color:#000;
+    font-size:.75rem;
+    font-weight:700;
+    padding:.5rem .6rem;
+    cursor:pointer;
+    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
+    box-shadow:0 12px 30px rgba(255,77,253,.45),
+               0 0 20px rgba(0,255,246,.4),
+               0 0 60px rgba(107,0,255,.6);
+    margin-bottom:.5rem;
+}
+button.btn:disabled{opacity:.4;cursor:not-allowed;}
+.smallBtn{font-size:.65rem;padding:.4rem .5rem;}
+
+/* ONLINE LISTE */
+#onlineList .userRow{
+    border:2px solid #6b00ff;
+    border-radius:8px;
+    background:#2a2a38aa;
+    box-shadow:0 0 12px rgba(107,0,255,.4),
+               0 0 24px rgba(0,255,246,.2);
+    padding:.5rem;
+    margin-bottom:.5rem;
+    line-height:1.3;
+    cursor:pointer;
+}
+.nameLine{display:flex;align-items:center;gap:.4rem;}
+.avatarEmoji{font-size:1rem;text-shadow:0 0 8px #fff,0 0 12px #ff4dfd;}
+.roleCrown{color:#ffd93b;text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;}
+
+/* RAUM */
+#roomWrap{grid-area:room;background:#1a1a24dd;border-bottom:2px solid #6b00ff;padding:.5rem;}
+#roomArea{position:relative;width:100%;height:160px;border:2px solid #6b00ff;border-radius:10px;overflow:hidden;}
+.roomAvatar{position:absolute;cursor:grab;user-select:none;font-size:1.4rem;text-align:center;}
+.roomName{font-size:.6rem;margin-top:.25rem;text-shadow:0 0 6px #00fff6;}
+.roomCrown{color:#ffd93b;text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;font-size:.6rem;}
+
+/* CHAT */
+main{grid-area:chat;background:#1a1a24dd;display:flex;flex-direction:column;}
+#messages{flex:1;overflow-y:auto;padding:1rem;font-family:Consolas,Menlo,monospace;font-size:.8rem;}
+.msgBubble{border:2px solid #6b00ff;background:#2a2a38;border-radius:10px;padding:.6rem;margin-bottom:.6rem;}
+.msgInfoLine{font-size:.65rem;color:#ff4dfd;text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;}
+.msgTranslation{color:#fff;text-shadow:0 0 6px #fff,0 0 12px #00fff6;}
+
+/* INPUT */
+footer{grid-area:input;background:#1a1a24cc;border-top:2px solid #6b00ff;padding:.75rem;display:grid;grid-template-columns:1fr auto;gap:.5rem;}
+#msgInput{height:60px;background:#2a2a38;color:#fff;border:2px solid #6b00ff;border-radius:8px;font-family:Consolas,Menlo,monospace;}
+#sendBtn{background:radial-gradient(circle at 20% 20%, #00fff6 0%, #003d3d 60%);border:0;border-radius:10px;color:#00fff6;font-weight:700;cursor:pointer;}
+
+/* GAME ROOM */
+#gameRoomWrap{grid-area:game;background:#0f0f14dd;border-top:2px solid #6b00ff;padding:.75rem;font-size:.7rem;}
 </style>
 </head>
-
 <body>
-<!-- === 🦋 Login-Fenster === -->
-<div id="loginBox" style="
-  position:fixed; top:0; left:0; right:0; bottom:0;
-  background:rgba(10,0,20,0.95);
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  color:#fff; font-size:1.1em;
-  z-index:999;
-">
-  <h2 style="color:#ff3eb5;">🦋 Willkommen im DeepButterflyRealm</h2>
-  <p>Bitte gib deinen Namen ein:</p>
-  <input id="loginName" style="padding:8px; border-radius:8px; border:1px solid #ff3eb5; background:#200030; color:#fff;">
-  <p>Wähle deine Sprache:</p>
-  <select id="loginLang" style="padding:6px; border-radius:8px; background:#200030; color:#fff; border:1px solid #ff3eb5;">
-    <option value="de">Deutsch</option>
-    <option value="hu">Magyar (Ungarisch)</option>
-    <option value="en">English</option>
-    <option value="fr">Français</option>
-    <option value="it">Italiano</option>
-    <option value="es">Español</option>
-    <option value="tr">Türkçe</option>
-    <option value="ru">Русский</option>
-    <option value="zh">中文</option>
-    <option value="ja">日本語</option>
-  </select>
-  <br>
-  <button id="loginBtn">Betreten 💫</button>
-</div>
 
-<div id="topbar">
-  <div>🦋 <b>DeepButterflyRealm</b></div>
-  <div id="clockTop"></div>
-</div>
+<div id="clockTop">--:--</div>
 
-<div id="main">
-  <div id="sidebar" class="hidden">
-    <h2>Online</h2>
-    <div id="userList"></div>
-    <hr>
-    <button id="startGameBtn">🎮 TicTacToe</button>
-  </div>
+<header>
+    <div class="big">DeepButterfly Realm 3.0 💜👑</div>
+    <div class="sub">Multilingual · Owner-Krone · Avatare · Sitzen · Spiele · Uhrzeit 💖</div>
+</header>
 
-  <div id="chatArea">
-    <div id="chat"></div>
-    <input id="msgInput" placeholder="Nachricht eingeben und Enter drücken...">
-    <div id="clockBottom"></div>
-  </div>
-</div>
+<aside id="asideBox">
+    <!-- LOGIN -->
+    <div class="block">
+        <h2>Login</h2>
+        <input id="loginUser" type="text" placeholder="Name"/>
+        <input id="loginPass" type="password" placeholder="Passwort"/>
+        <button id="loginBtn" class="btn">Einloggen</button>
+        <div id="loginStatus"></div>
+    </div>
 
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- ONLINE USERS -->
+    <div class="block">
+        <h2>Wer ist online?</h2>
+        <div id="onlineList"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="block" id="adminPanel" style="display:none;">
+        <h2>Admin</h2>
+        <div class="targetName">Kein Ziel ausgewählt</div>
+        <button id="fixOwnerBtn" class="smallBtn">👑 Owner fixen</button>
+        <button id="makeCoOwnerBtn" class="smallBtn">👑 Mitbesitzer</button>
+        <button id="removeCoOwnerBtn" class="smallBtn">💔 Entfernen</button>
+        <button id="kickBtn" class="smallBtn">🚫 Kick</button>
+        <button id="banBtn" class="smallBtn">❌ Ban</button>
+        <div id="adminStatus"></div>
+    </div>
+</aside>
+
+<div id="roomWrap"><div id="roomArea"></div></div>
+<main><div id="messages"></div></main>
+<footer><textarea id="msgInput" disabled></textarea><button id="sendBtn" disabled>Senden</button></footer>
+<section id="gameRoomWrap">🕹 Spielraum</section>
+
+<script src="/socket.io/socket.io.js"></script>
 <script>
-/* === 🕒 Uhrzeit === */
-function updateClocks(){
-  const t=new Date().toLocaleTimeString();
-  document.getElementById("clockTop").textContent=t;
-  document.getElementById("clockBottom").textContent=t;
+const socket = io();
+const asideEl = document.getElementById("asideBox");
+const loginUser=document.getElementById("loginUser");
+const loginPass=document.getElementById("loginPass");
+const loginBtn=document.getElementById("loginBtn");
+const loginStatus=document.getElementById("loginStatus");
+const messagesEl=document.getElementById("messages");
+const msgInput=document.getElementById("msgInput");
+const sendBtn=document.getElementById("sendBtn");
+const onlineList=document.getElementById("onlineList");
+const adminPanel=document.getElementById("adminPanel");
+const adminStatus=document.getElementById("adminStatus");
+const clockTopEl=document.getElementById("clockTop");
+
+let authToken=null;
+let myProfile=null;
+
+/* --- Uhrzeit --- */
+function updateClockTop(){
+  const d=new Date();
+  clockTopEl.textContent=d.toLocaleString();
 }
-setInterval(updateClocks,1000); updateClocks();
+setInterval(updateClockTop,1000);
 
-/* === 🔗 Socket Verbindung === */
-const socket=io();
-
-/* === 🌐 Google Translate === */
+/* --- Google Translate --- */
 const GOOGLE_API_KEY="AIzaSyCPVLOrz0B2P_k6Tr6SFMSeup0GttsGNXE";
-async function translateText(text,target){
+async function translateAuto(text,targetLang){
   try{
-    const r=await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}`,{
+    const res=await fetch("https://translation.googleapis.com/language/translate/v2?key="+GOOGLE_API_KEY,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({q:text,target})
+      body:JSON.stringify({q:text,target:targetLang})
     });
-    const data=await r.json();
-    return data.data?.translations?.[0]?.translatedText||text;
-  }catch(e){console.error(e);return text;}
+    const data=await res.json();
+    if(data?.data?.translations?.[0]?.translatedText){
+      return {
+        translatedText:data.data.translations[0].translatedText,
+        detectedSource:data.data.translations[0].detectedSourceLanguage||"auto"
+      };
+    }
+  }catch(e){console.error(e);}
+  return {translatedText:text,detectedSource:"auto"};
 }
 
-/* === 💬 Chat-System === */
-let username=null;
-let userLang="de";
-let userColor="#ff3eb5";
-let isOwner=false;
-
-/* === 🦋 Login === */
-document.getElementById("loginBtn").addEventListener("click",()=>{
-  username=document.getElementById("loginName").value.trim();
-  userLang=document.getElementById("loginLang").value;
-  if(!username){alert("Bitte gib einen Namen ein 🦋");return;}
-  document.getElementById("loginBox").style.display="none";
-  socket.connect();
-  socket.emit("join",{user:username,lang:userLang,color:userColor});
-  socket.emit("spawn",{user:username});
-});
-
-/* === Nachrichten === */
-document.getElementById("msgInput").addEventListener("keydown",async e=>{
-  if(e.key==="Enter"&&e.target.value.trim()!==""){
-    const text=e.target.value.trim();
-    socket.emit("chat",{text,lang:userLang,color:userColor,user:username});
-    e.target.value="";
+/* --- Chat Nachricht anzeigen --- */
+async function addMessageBubble(msg){
+  const wrap=document.createElement("div");
+  wrap.className="msgBubble";
+  wrap.innerHTML=`<b style="color:${msg.color||'#fff'}">${msg.avatar||'💬'} ${msg.from}</b><br>${msg.text}`;
+  if(myProfile){
+    const myLang=myProfile.language||"de";
+    const r=await translateAuto(msg.text,myLang);
+    const info=document.createElement("div");
+    info.className="msgInfoLine";
+    info.textContent=`Übersetzt aus: ${r.detectedSource} → ${myLang}`;
+    const trans=document.createElement("div");
+    trans.className="msgTranslation";
+    trans.textContent=r.translatedText;
+    wrap.appendChild(info);
+    wrap.appendChild(trans);
   }
-});
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop=messagesEl.scrollHeight;
+}
 
-/* === Eingehende Nachrichten === */
-socket.on("chat",async msg=>{
-  const myLang=userLang;
-  const translated=await translateText(msg.text,myLang);
-  const chat=document.getElementById("chat");
-  const el=document.createElement("div");
-  el.className="message";
-  el.innerHTML=`<strong style="color:${msg.color}">${msg.user}</strong>: ${translated}
-  <div class="meta">Übersetzt aus ${msg.lang} → ${myLang}</div>`;
-  chat.appendChild(el);
-  chat.scrollTop=chat.scrollHeight;
-});
+/* --- Sichtbarkeit Sidebar bis Login --- */
+asideEl.style.filter="blur(5px)";
+asideEl.style.pointerEvents="none";
 
-/* === Online-Liste === */
-socket.on("userlist", list=>{
-  const sidebar=document.getElementById("sidebar");
-  if(!username)return;
-  sidebar.classList.remove("hidden");
-  const ul=document.getElementById("userList");
-  ul.innerHTML="";
-  list.forEach(u=>{
-    const div=document.createElement("div");
-    div.textContent=u.user+(u.role==="owner"?" 👑":"");
-    ul.appendChild(div);
+/* --- Nach Login freigeben --- */
+function afterLoginUI(){
+  msgInput.disabled=false;
+  sendBtn.disabled=false;
+  asideEl.style.filter="none";
+  asideEl.style.pointerEvents="auto";
+  if(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin"){
+    adminPanel.style.display="block";
+  }else adminPanel.style.display="none";
+}
+
+/* --- Login --- */
+loginBtn.onclick=async()=>{
+  loginStatus.textContent="Logge ein...";
+  const res=await fetch("/login",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({username:loginUser.value,password:loginPass.value})
+  });
+  const data=await res.json();
+  if(!data.ok){loginStatus.textContent=data.error||"Fehler";return;}
+  authToken=data.token;
+  myProfile=data.profile;
+  loginStatus.textContent="Eingeloggt als "+myProfile.username;
+  afterLoginUI();
+  socket.emit("joinChat",authToken);
+};
+
+/* --- Chat senden --- */
+sendBtn.onclick=()=>{
+  const t=msgInput.value.trim();
+  if(!t)return;
+  socket.emit("sendMessage",{token:authToken,text:t});
+  msgInput.value="";
+};
+
+/* --- Socket Events --- */
+socket.on("chatMessage",m=>addMessageBubble(m));
+socket.on("userlist",arr=>{
+  onlineList.innerHTML="";
+  arr.forEach(u=>{
+    const d=document.createElement("div");
+    d.className="userRow";
+    d.textContent=u.avatar+" "+u.username+" ("+u.language+")";
+    onlineList.appendChild(d);
   });
 });
-
-/* === Avatar-Bereich === */
-const gameArea=document.createElement("div");
-gameArea.id="gameArea";
-document.getElementById("chatArea").prepend(gameArea);
-const avatars={};
-socket.on("spawn",user=>{
-  if(!avatars[user.user]){
-    const el=document.createElement("div");
-    el.className="avatar";
-    el.style.left=Math.random()*250+"px";
-    el.style.top=Math.random()*200+"px";
-    el.textContent="🦋";
-    gameArea.appendChild(el);
-    avatars[user.user]=el;
-  }
-});
-socket.on("move",data=>{
-  if(avatars[data.user]){
-    avatars[data.user].style.left=data.x+"px";
-    avatars[data.user].style.top=data.y+"px";
-  }
-});
-document.addEventListener("keydown",e=>{
-  if(!avatars[username])return;
-  const el=avatars[username];
-  let x=parseInt(el.style.left)||0;
-  let y=parseInt(el.style.top)||0;
-  if(e.key==="ArrowLeft")x-=10;
-  if(e.key==="ArrowRight")x+=10;
-  if(e.key==="ArrowUp")y-=10;
-  if(e.key==="ArrowDown")y+=10;
-  el.style.left=x+"px"; el.style.top=y+"px";
-  socket.emit("move",{user:username,x,y});
-});
-
-/* === TicTacToe === */
-let tttBoard=null;
-function createTicTacToe(){
-  if(document.getElementById("ttt"))return;
-  const wrap=document.createElement("div");
-  wrap.id="ttt";
-  wrap.innerHTML="<h3 style='color:#ff3eb5;text-align:center;'>🎮 TicTacToe</h3>";
-  const table=document.createElement("table");
-  table.style.margin="0 auto";
-  table.style.borderCollapse="collapse";
-  table.style.boxShadow="0 0 10px #ff3eb5";
-  for(let r=0;r<3;r++){
-    const tr=document.createElement("tr");
-    for(let c=0;c<3;c++){
-      const td=document.createElement("td");
-      td.dataset.pos=r+","+c;
-      td.style.width="60px";td.style.height="60px";
-      td.style.textAlign="center";td.style.fontSize="2em";
-      td.style.border="1px solid #ff3eb5";
-      td.addEventListener("click",()=>{
-        if(!td.textContent){
-          td.textContent="❌";
-          socket.emit("ttt-move",{pos:td.dataset.pos,symbol:"❌"});
-        }
-      });
-      tr.appendChild(td);
-    }
-    table.appendChild(tr);
-  }
-  wrap.appendChild(table);
-  document.getElementById("chatArea").appendChild(wrap);
-  tttBoard=table;
-}
-document.getElementById("startGameBtn").addEventListener("click",()=>{
-  createTicTacToe();
-  socket.emit("ttt-start");
-});
-socket.on("ttt-start",()=>createTicTacToe());
-socket.on("ttt-move",data=>{
-  if(tttBoard){
-    const cell=tttBoard.querySelector(`[data-pos='${data.pos}']`);
-    if(cell&&!cell.textContent)cell.textContent=data.symbol==="❌"?"⭕":"❌";
-  }
-});
-
-/* === Logout / Sterne === */
-window.addEventListener("beforeunload",()=>{ socket.emit("leave",{user:username}); });
-
-const canvas=document.createElement("canvas");
-document.body.appendChild(canvas);
-canvas.style.position="fixed"; canvas.style.left=0; canvas.style.top=0; canvas.style.zIndex="-1";
-const ctx=canvas.getContext("2d");
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
-window.addEventListener("resize",resize);resize();
-const stars=Array.from({length:80},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2}));
-function drawStars(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle="#ff3eb5";
-  stars.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();s.y+=0.3;if(s.y>innerHeight)s.y=0;});
-  requestAnimationFrame(drawStars);
-}
-drawStars();
-
-console.log("DeepButterflyRealm 🦋 läuft mit Übersetzung, Avataren, Spielen und Uhrzeit.");
 </script>
 </body>
 </html>
+
