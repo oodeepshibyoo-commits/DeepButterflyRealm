@@ -1,606 +1,212 @@
-// server.js
-// DeepButterflyRealm basic backend
-// Express + Socket.io
+// === DeepButterflyRealm SERVER ===
+// Node.js + Express + Socket.IO + Google Translate Proxy
 
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const path = require("path");
-const crypto = require("crypto");
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import bcrypt from "bcrypt";
+import fetch from "node-fetch"; // Wichtig für Übersetzung
+import path from "path";
+import { fileURLToPath } from "url";
 
-// ====== SERVER SETUP ======
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
-const PORT = process.env.PORT || 10000;
-
-// Body parser
 app.use(express.json());
 
-// Static serve index.html and socket.io client
-app.use(express.static(path.join(__dirname)));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(__dirname)); // index.html usw.
 
-// ====== IN-MEMORY STORAGE ======
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "DEIN_KEY_HIER";
 
-// usersDB: alle registrierten Nutzer
-//   username: {
-//     username, passwordHash, avatar, color, language, theme, role
-//   }
-const usersDB = {};
+// === DATEN ===
+let users = {};      // username -> { passwordHash, avatar, color, language, theme, role, banned }
+let sessions = {};   // token -> username
+let online = {};     // username -> socket.id
+let roomPositions = {}; // username -> {x,y,avatar,color,role}
 
-// tokens: token -> username
-const tokens = {};
-
-// banned: { username: true }
-const banned = {};
-
-// onlineUsers: username -> { username, avatar, color, language, role, socketId }
-const onlineUsers = {};
-
-// raum: Avatare im Raum + Sitzplätze
-const roomState = {
-  avatars: {
-    // username: { x, y, avatar, color, role }
-  },
-  seats: [
-    { x: 50,  y: 100 },
-    { x: 120, y: 100 },
-    { x: 190, y: 100 },
-    { x: 260, y: 100 },
-    { x: 330, y: 100 }
-  ]
-};
-
-// Spiel-Lobby
-// currentGame = {
-//   type: "tictactoe" | "memory",
-//   host: "Name",
-//   players: ["Name1","Name2",...],
-//   open: true/false
-// }
-let currentGame = null;
-
-// ====== HELPER FUNKTIONEN ======
-function hashPass(pw) {
-  return crypto.createHash("sha256").update(pw).digest("hex");
+// === Helper ===
+function makeToken() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+function isOwner(user) {
+  return users[user] && users[user].role === "owner";
 }
 
-function makeToken(username) {
-  const t = crypto.randomBytes(16).toString("hex");
-  tokens[t] = username;
-  return t;
-}
+// === Routen ===
 
-function userPublicData(u) {
-  return {
-    username: u.username,
-    avatar: u.avatar,
-    color: u.color,
-    language: u.language,
-    role: u.role
-  };
-}
+// Registrierung
+app.post("/register", async (req, res) => {
+  const { username, password, avatar, color, language, theme } = req.body;
+  if (!username || !password)
+    return res.json({ ok: false, error: "Fehlender Name oder Passwort" });
+  if (users[username])
+    return res.json({ ok: false, error: "Name existiert bereits" });
 
-function broadcastUserlist() {
-  const list = Object.values(onlineUsers).map(u => ({
-    username: u.username,
-    avatar: u.avatar,
-    color: u.color,
-    language: u.language,
-    role: u.role
-  }));
-  io.emit("userlist", list);
-}
+  const hash = await bcrypt.hash(password, 10);
+  const role = Object.keys(users).length === 0 ? "owner" : "user"; // erster ist Owner
+  users[username] = { passwordHash: hash, avatar, color, language, theme, role, banned: false };
+  return res.json({ ok: true, role });
+});
 
-function broadcastRoom() {
-  io.emit("roomUpdate", {
-    avatars: roomState.avatars,
-    seats: roomState.seats
-  });
-}
+// Login
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = users[username];
+  if (!user) return res.json({ ok: false, error: "Unbekannter Nutzer" });
+  if (user.banned) return res.json({ ok: false, error: "Gebannt" });
 
-function broadcastGame() {
-  io.emit("gameState", currentGame);
-}
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) return res.json({ ok: false, error: "Falsches Passwort" });
 
-function kickUser(targetName, reason = "Du wurdest gekickt.") {
-  // find socket
-  for (const [sockId, data] of Object.entries(connectedSockets)) {
-    if (data.username === targetName) {
-      const sock = io.sockets.sockets.get(sockId);
-      if (sock) {
-        sock.emit("forceLogout", { reason });
-        sock.disconnect(true);
-      }
-    }
-  }
-}
-
-// Check ob role1 Admin-Rechte über andere hat
-function canModerate(role1) {
-  return role1 === "owner" || role1 === "coOwner" || role1 === "admin";
-}
-
-// ====== VERBUNDENE SOCKETS ======
-const connectedSockets = {};
-// connectedSockets[socket.id] = { username }
-
-// ====== OWNER DEFAULT ======
-// Wenn es keinen Owner gibt, erste Registrierung mit Name "DeepButterflyMusic"
-// bekommt automatisch Rolle owner
-
-function ensureOwnerExists() {
-  const alreadyHasOwner = Object.values(usersDB).some(u => u.role === "owner");
-  if (!alreadyHasOwner) {
-    // Falls User "DeepButterflyMusic" existiert, der wird Owner
-    if (usersDB["DeepButterflyMusic"]) {
-      usersDB["DeepButterflyMusic"].role = "owner";
-    }
-  }
-}
-
-// ====== API ROUTES ======
-
-// POST /register
-// body: { username, password, avatar, color, language, theme }
-app.post("/register", (req, res) => {
-  const { username, password, avatar, color, language, theme } = req.body || {};
-
-  if (!username || !password) {
-    return res.json({ ok: false, error: "Name/Passwort fehlt" });
-  }
-  if (usersDB[username]) {
-    return res.json({ ok: false, error: "Name existiert schon" });
-  }
-
-  const pwHash = hashPass(password);
-
-  // Standardrolle user
-  let role = "user";
-
-  // Sonderfall: DeepButterflyMusic wird Owner, wenn kein Owner existiert
-  const alreadyHasOwner = Object.values(usersDB).some(u => u.role === "owner");
-  if (!alreadyHasOwner && username === "DeepButterflyMusic") {
-    role = "owner";
-  }
-
-  usersDB[username] = {
-    username,
-    passwordHash: pwHash,
-    avatar: avatar || "🦋",
-    color: color || "#ff4dfd",
-    language: language || "de",
-    theme: theme || "default",
-    role
-  };
-
-  ensureOwnerExists();
-
+  const token = makeToken();
+  sessions[token] = username;
   return res.json({
     ok: true,
-    role: usersDB[username].role
-  });
-});
-
-// POST /login
-// body: { username, password }
-app.post("/login", (req,res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) {
-    return res.json({ ok:false, error:"Fehlt" });
-  }
-  const u = usersDB[username];
-  if (!u) {
-    return res.json({ ok:false, error:"Unbekannt" });
-  }
-  if (banned[username]) {
-    return res.json({ ok:false, error:"Gebannt" });
-  }
-
-  const pwHash = hashPass(password);
-  if (pwHash !== u.passwordHash) {
-    return res.json({ ok:false, error:"Falsches Passwort" });
-  }
-
-  const token = makeToken(username);
-  return res.json({
-    ok:true,
     token,
-    profile: {
-      username: u.username,
-      avatar: u.avatar,
-      color: u.color,
-      language: u.language,
-      theme: u.theme,
-      role: u.role
-    }
+    profile: { username, avatar: user.avatar, color: user.color, language: user.language, theme: user.theme, role: user.role }
   });
 });
 
-// POST /profile
-// body: { token, avatar, color, language, theme }
-app.post("/profile", (req,res) => {
-  const { token, avatar, color, language, theme } = req.body || {};
-  const username = tokens[token];
-  if (!username) {
-    return res.json({ ok:false, error:"Ungültig" });
-  }
-  const u = usersDB[username];
-  if (!u) {
-    return res.json({ ok:false, error:"Kein Profil" });
-  }
+// Profil speichern
+app.post("/profile", (req, res) => {
+  const { token, avatar, color, language, theme } = req.body;
+  const username = sessions[token];
+  if (!username || !users[username]) return res.json({ ok: false, error: "Ungültig" });
 
-  if (avatar)   u.avatar   = avatar;
-  if (color)    u.color    = color;
-  if (language) u.language = language;
-  if (theme)    u.theme    = theme;
-
-  // Update live online user too
-  if (onlineUsers[username]) {
-    onlineUsers[username].avatar   = u.avatar;
-    onlineUsers[username].color    = u.color;
-    onlineUsers[username].language = u.language;
-    onlineUsers[username].role     = u.role;
-  }
-  // Update room avatar style
-  if (roomState.avatars[username]) {
-    roomState.avatars[username].avatar = u.avatar;
-    roomState.avatars[username].color  = u.color;
-    roomState.avatars[username].role   = u.role;
-  }
-
-  broadcastUserlist();
-  broadcastRoom();
-
+  Object.assign(users[username], { avatar, color, language, theme });
   return res.json({
-    ok:true,
-    profile: {
-      username: u.username,
-      avatar: u.avatar,
-      color: u.color,
-      language: u.language,
-      theme: u.theme,
-      role: u.role
-    }
+    ok: true,
+    profile: { username, avatar, color, language, theme, role: users[username].role }
   });
 });
 
-// POST /fixOwner
-// body: { token }
-app.post("/fixOwner", (req,res) => {
-  const { token } = req.body || {};
-  const username = tokens[token];
-  if (!username) {
-    return res.json({ ok:false, error:"Ungültig" });
-  }
-  const u = usersDB[username];
-  if (!u) {
-    return res.json({ ok:false, error:"Kein Profil" });
-  }
+// === 🧠 Übersetzungs-Proxy ===
+app.post("/translateText", async (req, res) => {
+  try {
+    const { text, target } = req.body || {};
+    if (!text || !target)
+      return res.json({ ok: false, error: "missing text/target" });
 
-  // Nur DeepButterflyMusic darf sich selbst Owner zurückgeben
-  if (username === "DeepButterflyMusic") {
-    u.role = "owner";
-  } else {
-    return res.json({ ok:false, error:"Nur DeepButterflyMusic darf Owner fixen" });
-  }
+    const gRes = await fetch("https://translation.googleapis.com/language/translate/v2?key=" + GOOGLE_API_KEY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q: text, target })
+    });
 
-  // Update live:
-  if (onlineUsers[username]) {
-    onlineUsers[username].role = u.role;
-  }
-  if (roomState.avatars[username]) {
-    roomState.avatars[username].role = u.role;
-  }
+    if (!gRes.ok) return res.json({ ok: false, error: "API-Fehler" });
+    const data = await gRes.json();
+    const tr = data?.data?.translations?.[0];
+    if (!tr) return res.json({ ok: false, error: "Keine Übersetzung" });
 
-  broadcastUserlist();
-  broadcastRoom();
-
-  return res.json({
-    ok:true,
-    profile: {
-      username:u.username,
-      avatar:u.avatar,
-      color:u.color,
-      language:u.language,
-      theme:u.theme,
-      role:u.role
-    }
-  });
+    return res.json({ ok: true, translatedText: tr.translatedText, detectedSource: tr.detectedSourceLanguage || "auto" });
+  } catch (e) {
+    console.error("translateText error", e);
+    return res.json({ ok: false, error: "Serverfehler" });
+  }
 });
 
-// ===== SOCKET.IO HANDLING =====
+// === SOCKET.IO ===
+io.on("connection", (socket) => {
+  console.log("Socket verbunden:", socket.id);
 
-// joinChat: nach Login ruft Client joinChat(token)
-io.on("connection", socket => {
-  console.log("Socket verbunden", socket.id);
-
-  connectedSockets[socket.id] = { username: null };
-
-  socket.on("joinChat", token => {
-    const username = tokens[token];
-    if (!username) return;
-    if (banned[username]) {
-        socket.emit("forceLogout",{reason:"Gebannt"});
-        return;
+  socket.on("joinChat", (token) => {
+    const username = sessions[token];
+    if (!username || !users[username]) {
+      socket.emit("forceLogout", { reason: "Ungültige Sitzung" });
+      return;
     }
 
-    const u = usersDB[username];
-    if (!u) return;
+    users[username].socketId = socket.id;
+    online[username] = socket.id;
 
-    connectedSockets[socket.id].username = username;
-
-    // in onlineUsers eintragen
-    onlineUsers[username] = {
-      username: u.username,
-      avatar: u.avatar,
-      color: u.color,
-      language: u.language,
-      role: u.role,
-      socketId: socket.id
-    };
-
-    // Raumavatar initialisieren falls nicht vorhanden
-    if (!roomState.avatars[username]) {
-      roomState.avatars[username] = {
-        x: 20 + Math.floor(Math.random()*200),
-        y: 20 + Math.floor(Math.random()*80),
-        avatar: u.avatar,
-        color: u.color,
-        role: u.role
-      };
-    }
-
-    // Broadcast Updates
-    broadcastUserlist();
-    broadcastRoom();
-
-    // Begrüßungs-Systemmeldung für alle
-    const joinMsg = {
-      from:"System",
-      color:"#888",
-      avatar:"🔔",
-      text:`${username} ist jetzt online`,
-      timestamp:Date.now(),
-      senderLang:"system"
-    };
-    io.emit("chatMessage", joinMsg);
+    io.emit("userlist", getOnlineList());
+    roomPositions[username] = roomPositions[username] || { x: 20, y: 20, avatar: users[username].avatar, color: users[username].color, role: users[username].role };
+    io.emit("roomUpdate", roomPositions);
   });
 
-  // Chat-Nachricht
-  // { token, text }
-  socket.on("sendMessage", data => {
-    const { token, text } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    if (banned[username]) {
-        socket.emit("forceLogout",{reason:"Gebannt"});
-        return;
-    }
-    const u = usersDB[username];
-    if (!u) return;
+  socket.on("sendMessage", (data) => {
+    const username = sessions[data.token];
+    if (!username || !users[username]) return;
 
-    const msgObj = {
+    const msg = {
       from: username,
-      avatar: u.avatar,
-      color: u.color,
-      role: u.role,
-      text: text,
-      timestamp: Date.now(),
-      senderLang: u.language || "de"
+      avatar: users[username].avatar,
+      color: users[username].color,
+      role: users[username].role,
+      text: data.text
     };
-    io.emit("chatMessage", msgObj);
+    io.emit("chatMessage", msg);
   });
 
-  // moveAvatar: { token, x, y }
-  socket.on("moveAvatar", data => {
-    const { token, x, y } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    if (!roomState.avatars[username]) return;
-
-    roomState.avatars[username].x = x;
-    roomState.avatars[username].y = y;
-    broadcastRoom();
-  });
-
-  // sitOnSeat: { token, seatIndex }
-  socket.on("sitOnSeat", data => {
-    const { token, seatIndex } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const u = usersDB[username];
-    if (!u) return;
-    if (!roomState.seats[seatIndex]) return;
-    if (!roomState.avatars[username]) return;
-
-    // setze Avatar auf Sitzposition
-    roomState.avatars[username].x = roomState.seats[seatIndex].x;
-    roomState.avatars[username].y = roomState.seats[seatIndex].y;
-    broadcastRoom();
-  });
-
-  // startGame: { token, type }
-  socket.on("startGame", data => {
-    const { token, type } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const u = usersDB[username];
-    if (!u) return;
-
-    // Nur owner / coOwner / admin darf Spiel hosten
-    if (!canModerate(u.role)) return;
-
-    currentGame = {
-      type: type || "tictactoe",
-      host: username,
-      players: [ username ],
-      open: true
+  socket.on("moveAvatar", (data) => {
+    const username = sessions[data.token];
+    if (!username || !users[username]) return;
+    roomPositions[username] = {
+      x: data.x,
+      y: data.y,
+      avatar: users[username].avatar,
+      color: users[username].color,
+      role: users[username].role
     };
-    broadcastGame();
+    io.emit("roomUpdate", roomPositions);
+  });
 
-    // Einladung an alle anderen
-    for (const [sockId, info] of Object.entries(connectedSockets)) {
-      if (info.username && info.username !== username) {
-        const otherSock = io.sockets.sockets.get(sockId);
-        if (otherSock) {
-          otherSock.emit("gameInvite", {
-            type: currentGame.type,
-            host: username,
-            timestamp: Date.now()
-          });
-        }
-      }
+  socket.on("promoteAdmin", (data) => {
+    const admin = sessions[data.token];
+    if (!admin || !isOwner(admin)) return;
+    const target = users[data.targetUser];
+    if (target) {
+      target.role = "admin";
+      io.emit("chatMessage", { from: "System", text: `${data.targetUser} ist jetzt Mitbesitzer 👑` });
+      io.emit("userlist", getOnlineList());
     }
   });
 
-  // joinGame: { token }
-  socket.on("joinGame", data => {
-    const { token } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    if (!currentGame) return;
-    if (!currentGame.open) return;
-
-    if (!currentGame.players.includes(username)) {
-      currentGame.players.push(username);
-      broadcastGame();
-    }
+  socket.on("kickUser", (data) => {
+    const admin = sessions[data.token];
+    if (!admin || !(isOwner(admin) || users[admin].role === "admin")) return;
+    const target = data.targetUser;
+    const targetSocket = online[target];
+    if (targetSocket) io.to(targetSocket).emit("forceLogout", { reason: "Du wurdest gekickt." });
+    delete online[target];
+    io.emit("userlist", getOnlineList());
   });
 
-  // lockGame: { token }
-  socket.on("lockGame", data => {
-    const { token } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    if (!currentGame) return;
-    const u = usersDB[username];
-    if (!u) return;
-
-    // nur Host oder Owner darf schließen
-    if (currentGame.host === username || u.role === "owner") {
-      currentGame.open = !currentGame.open;
-      broadcastGame();
-    }
-  });
-
-  // promoteCoOwner: { token, targetUser }
-  socket.on("promoteCoOwner", data => {
-    const { token, targetUser } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const me = usersDB[username];
-    if (!me) return;
-    if (!canModerate(me.role)) return;
-    if (!usersDB[targetUser]) return;
-    if (targetUser === "DeepButterflyMusic") return; // bleibt Owner-Kandidat
-
-    usersDB[targetUser].role = "coOwner";
-
-    // sync live data
-    if (onlineUsers[targetUser]) {
-      onlineUsers[targetUser].role = "coOwner";
-    }
-    if (roomState.avatars[targetUser]) {
-      roomState.avatars[targetUser].role = "coOwner";
-    }
-    broadcastUserlist();
-    broadcastRoom();
-  });
-
-  // demoteToUser: { token, targetUser }
-  socket.on("demoteToUser", data => {
-    const { token, targetUser } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const me = usersDB[username];
-    if (!me) return;
-    if (!canModerate(me.role)) return;
-    if (!usersDB[targetUser]) return;
-    // nicht Owner runterschmeißen
-    if (usersDB[targetUser].role === "owner") return;
-
-    usersDB[targetUser].role = "user";
-
-    if (onlineUsers[targetUser]) {
-      onlineUsers[targetUser].role = "user";
-    }
-    if (roomState.avatars[targetUser]) {
-      roomState.avatars[targetUser].role = "user";
-    }
-    broadcastUserlist();
-    broadcastRoom();
-  });
-
-  // kickUser: { token, targetUser }
-  socket.on("kickUser", data => {
-    const { token, targetUser } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const me = usersDB[username];
-    if (!me) return;
-    if (!canModerate(me.role)) return;
-    if (!usersDB[targetUser]) return;
-    if (usersDB[targetUser].role === "owner") return;
-
-    // Kicken = Verbindung trennen
-    kickUser(targetUser, "Du wurdest gekickt.");
-
-    // Entfernen aus onlineUsers
-    delete onlineUsers[targetUser];
-    delete roomState.avatars[targetUser];
-    broadcastUserlist();
-    broadcastRoom();
-  });
-
-  // banUser: { token, targetUser }
-  socket.on("banUser", data => {
-    const { token, targetUser } = data || {};
-    const username = tokens[token];
-    if (!username) return;
-    const me = usersDB[username];
-    if (!me) return;
-    if (!canModerate(me.role)) return;
-    if (!usersDB[targetUser]) return;
-    if (usersDB[targetUser].role === "owner") return;
-
-    banned[targetUser] = true;
-    kickUser(targetUser, "Du wurdest gebannt.");
-
-    delete onlineUsers[targetUser];
-    delete roomState.avatars[targetUser];
-    broadcastUserlist();
-    broadcastRoom();
+  socket.on("banUser", (data) => {
+    const admin = sessions[data.token];
+    if (!admin || !(isOwner(admin) || users[admin].role === "admin")) return;
+    const target = data.targetUser;
+    if (users[target]) users[target].banned = true;
+    const targetSocket = online[target];
+    if (targetSocket) io.to(targetSocket).emit("forceLogout", { reason: "Du wurdest gebannt." });
+    delete online[target];
+    io.emit("userlist", getOnlineList());
   });
 
   socket.on("disconnect", () => {
-    const who = connectedSockets[socket.id]?.username;
-    delete connectedSockets[socket.id];
-
-    if (who && onlineUsers[who]) {
-      delete onlineUsers[who];
-      // Raum-Avatar bleibt aber erhalten (damit Position gemerkt bleibt)
-      broadcastUserlist();
-
-      const leaveMsg = {
-        from:"System",
-        color:"#888",
-        avatar:"💤",
-        text:`${who} hat den Chat verlassen`,
-        timestamp:Date.now(),
-        senderLang:"system"
-      };
-      io.emit("chatMessage", leaveMsg);
+    for (const u in online) {
+      if (online[u] === socket.id) {
+        delete online[u];
+        io.emit("userlist", getOnlineList());
+      }
     }
-
-    console.log("Socket getrennt", socket.id);
   });
 });
 
-// ====== START ======
-server.listen(PORT, () => {
-  console.log("Server läuft auf Port", PORT);
-});
+function getOnlineList() {
+  return Object.keys(online).map(u => ({
+    username: u,
+    avatar: users[u].avatar,
+    color: users[u].color,
+    language: users[u].language,
+    role: users[u].role
+  }));
+}
+
+// === SERVER START ===
+const PORT = process.env.PORT || 10000;
+server.listen(PORT, () => console.log("🦋 Server läuft auf Port " + PORT));
+
 
 
