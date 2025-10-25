@@ -179,7 +179,7 @@ app.use(express.static(path.join(__dirname)));
 // -------------------------
 app.post("/translateText", async (req,res)=>{
   if(!GOOGLE_API_KEY){
-    return res.json({ok:false,error:"SERVER: GOOGLE_API_KEY fehlt"});
+    return res.json({ok:false,error:"SERVER: AIzaSyCPVLOrz0B2P_k6Tr6SFMSeup0GttsGNXE"});
   }
   const { text, target } = req.body || {};
   if(!text || !target){
