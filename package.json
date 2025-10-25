@@ -1,16 +1,17 @@
 {
   "name": "deepbutterflyrealm",
   "version": "1.0.0",
-  "description": "DeepButterfly Realm 💜 multilingual live chat with owner role and auto-translation",
+  "description": "DeepButterfly Realm 💜👑 Chat + Game + Avatar + Übersetzung",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "bcrypt": "^5.1.0",
-    "jsonwebtoken": "^9.0.0",
-    "cors": "^2.8.5"
+    "socket.io": "^4.7.5",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
