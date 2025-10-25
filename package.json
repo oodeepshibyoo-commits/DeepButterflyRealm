@@ -1,0 +1,20 @@
+{
+  "name": "deepbutterflyrealm",
+  "version": "1.0.0",
+  "description": "DeepButterfly Realm 💜👑 Multilingual Chat mit Owner, Kick/Ban, Avataren, Raum und Spielen (Beta)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1",
+    "node-fetch": "^3.3.2",
+    "cors": "^2.8.5"
+  }
+}
