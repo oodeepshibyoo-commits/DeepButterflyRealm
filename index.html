@@ -1,722 +1,126 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>DeepButterfly Realm 💜👑</title>
-<style>
-body{
-    margin:0;
-    background:#0a0a0f;
-    color:#fff;
-    font-family:Arial,Helvetica,sans-serif;
-    display:grid;
-    grid-template-columns:260px 1fr;
-    grid-template-rows:auto 220px 1fr auto;
-    grid-template-areas:
-        "side head"
-        "side room"
-        "side chat"
-        "side input";
-    height:100vh;
-    overflow:hidden;
-    position:relative;
-}
-/* Pinke Neon-Uhr oben rechts */
-#clockTop{
-    position:fixed;
-    right:20px;
-    top:10px;
-    z-index:9999;
-    color:#ff4dfd;
-    font-size:.7rem;
-    font-weight:600;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    font-family:Consolas,Menlo,monospace;
-}
-
-/* HEADER */
-header{
-    grid-area:head;
-    background:#1a1a24cc;
-    border-bottom:2px solid #6b00ff;
-    box-shadow:0 20px 60px rgba(255,77,253,.25),
-               0 0 40px rgba(0,255,246,.25),
-               0 0 120px rgba(107,0,255,.4);
-    padding:.75rem 1rem;
-    font-size:.8rem;
-    line-height:1.4;
-    text-align:center;
-    z-index:10;
-}
-header .big{
-    color:#ff4dfd;
-    font-weight:600;
-    text-shadow:0 0 10px #ff4dfd,0 0 20px #00fff6;
-}
-header .sub{
-    color:#00fff6;
-    font-size:.7rem;
-    text-shadow:0 0 6px #00fff6;
-}
-
-/* SIDEBAR */
-aside{
-    grid-area:side;
-    background:#1a1a24dd;
-    border-right:2px solid #6b00ff;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    padding:.75rem;
-    font-size:.75rem;
-    overflow-y:auto;
-    z-index:10;
-}
-h2{
-    margin:.5rem 0 .25rem;
-    font-size:.75rem;
-    font-weight:600;
-    color:#ff4dfd;
-    text-shadow:0 0 6px #ff4dfd,0 0 10px #00fff6;
-}
-small{
-    color:#8a8a9f;
-    font-size:.7rem;
-    line-height:1.4;
-    display:block;
-    margin-bottom:.5rem;
-}
-.block{
-    border:2px solid #6b00ff;
-    border-radius:10px;
-    background:#2a2a38aa;
-    box-shadow:0 0 16px rgba(107,0,255,.4),
-               0 0 32px rgba(0,255,246,.2);
-    padding:.5rem .75rem;
-    margin-bottom:1rem;
-    font-size:.7rem;
-    line-height:1.4;
-}
-
-label{
-    display:block;
-    font-size:.7rem;
-    font-weight:600;
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 10px #00fff6;
-    margin-bottom:.25rem;
-}
-input[type="text"],
-input[type="password"],
-input[type="color"],
-select{
-    width:100%;
-    background:#2a2a38;
-    color:#fff;
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    font-size:.7rem;
-    padding:.4rem .5rem;
-    margin-bottom:.5rem;
-    box-shadow:0 0 12px rgba(107,0,255,.6),
-               0 0 24px rgba(0,255,246,.4);
-    outline:none;
-}
-button.btn{
-    width:100%;
-    background:radial-gradient(circle at 20% 20%, #ff4dfd 0%, #6b00ff 60%);
-    border:0;
-    border-radius:8px;
-    color:#000;
-    font-size:.75rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.5rem .6rem;
-    cursor:pointer;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    box-shadow:0 12px 30px rgba(255,77,253,.45),
-               0 0 20px rgba(0,255,246,.4),
-               0 0 60px rgba(107,0,255,.6);
-    margin-bottom:.5rem;
-}
-button.btn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-}
-.statusLine{
-    color:#8a8a9f;
-    font-size:.7rem;
-    line-height:1.4;
-    min-height:2.8em;
-    white-space:pre-wrap;
-}
-
-/* ONLINE LISTE */
-#onlineList .userRow{
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    background:#2a2a38aa;
-    box-shadow:0 0 12px rgba(107,0,255,.4),
-               0 0 24px rgba(0,255,246,.2);
-    padding:.5rem;
-    margin-bottom:.5rem;
-    line-height:1.3;
-    cursor:pointer;
-}
-.nameLine{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.4rem;
-    font-weight:600;
-}
-.avatarEmoji{
-    font-size:1rem;
-    line-height:1rem;
-    animation:bounce 2s ease-in-out infinite;
-    text-shadow:0 0 8px #fff,0 0 12px #ff4dfd;
-}
-@keyframes bounce{
-    0%   {transform:translateY(0) rotate(-2deg) scale(1);}
-    25%  {transform:translateY(-2px) rotate(2deg) scale(1.05);}
-    50%  {transform:translateY(0) rotate(-1deg) scale(1);}
-    75%  {transform:translateY(-3px) rotate(3deg) scale(1.07);}
-    100% {transform:translateY(0) rotate(-2deg) scale(1);}
-}
-.roleCrown{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.8rem;
-}
-.metaLine{
-    color:#aaa;
-    font-size:.65rem;
-}
-
-/* RAUM OBEN */
-#roomWrap{
-    grid-area:room;
-    background:#1a1a24dd;
-    border-bottom:2px solid #6b00ff;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    position:relative;
-    overflow:hidden;
-    padding:.5rem .75rem .75rem;
-    font-size:.7rem;
-}
-#roomTitle{
-    color:#ff4dfd;
-    font-weight:600;
-    font-size:.75rem;
-    text-shadow:0 0 10px #ff4dfd,0 0 20px #00fff6;
-    margin-bottom:.5rem;
-    display:flex;
-    justify-content:space-between;
-    flex-wrap:wrap;
-}
-#roomArea{
-    position:relative;
-    width:100%;
-    height:160px;
-    border:2px solid #6b00ff;
-    border-radius:10px;
-    background:radial-gradient(circle at 20% 20%,rgba(107,0,255,.4)0%,rgba(0,0,0,.2)60%);
-    box-shadow:0 0 20px rgba(107,0,255,.6),
-               0 0 60px rgba(0,255,246,.2),
-               0 0 120px rgba(255,77,253,.2);
-    overflow:hidden;
-}
-.roomAvatar{
-    position:absolute;
-    cursor:grab;
-    user-select:none;
-    font-size:1.4rem;
-    line-height:1.4rem;
-    text-shadow:0 0 8px #fff,0 0 12px #ff4dfd;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    font-weight:600;
-    min-width:2rem;
-    text-align:center;
-}
-.roomName{
-    font-size:.6rem;
-    margin-top:.25rem;
-    text-shadow:0 0 6px #00fff6;
-}
-.roomCrown{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.6rem;
-    margin-left:.25rem;
-}
-
-/* CHAT FENSTER */
-main{
-    grid-area:chat;
-    background:#1a1a24dd;
-    box-shadow:0 0 30px rgba(255,77,253,.3),
-               0 0 80px rgba(0,255,246,.2);
-    display:flex;
-    flex-direction:column;
-    position:relative;
-    overflow:hidden;
-}
-#messages{
-    flex:1;
-    overflow-y:auto;
-    padding:1rem;
-    font-family:Consolas,Menlo,monospace;
-    font-size:.8rem;
-    line-height:1.4;
-}
-.msgBubble{
-    border:2px solid #6b00ff;
-    background:#2a2a38;
-    box-shadow:0 0 20px rgba(107,0,255,.4),
-               0 0 40px rgba(0,255,246,.2);
-    border-radius:10px;
-    padding:.6rem .7rem;
-    margin-bottom:.6rem;
-    max-width:85%;
-    white-space:pre-wrap;
-    word-break:break-word;
-}
-.msgBubble.system{
-    border-color:#444;
-    background:#2a2a3844;
-    box-shadow:none;
-}
-.msgHeader{
-    font-weight:600;
-    font-size:.7rem;
-    margin-bottom:.4rem;
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.4rem;
-}
-.msgHeaderName{
-    text-shadow:0 0 8px #fff,0 0 12px #00fff6;
-}
-.msgHeaderName.systemName{
-    color:#888 !important;
-    text-shadow:none;
-}
-.msgHeaderRole{
-    color:#ffd93b;
-    text-shadow:0 0 6px #ffd93b,0 0 12px #ff4dfd;
-    font-size:.7rem;
-}
-.msgOriginal{
-    color:#bbb;
-    margin-bottom:.4rem;
-}
-.msgInfoLine{
-    font-size:.65rem;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-bottom:.25rem;
-    display:flex;
-    flex-wrap:wrap;
-    gap:.5rem;
-}
-.msgTranslation{
-    color:#fff;
-    text-shadow:0 0 6px #fff,0 0 12px #00fff6;
-    white-space:pre-wrap;
-    word-break:break-word;
-}
-.msgTime{
-    font-size:.6rem;
-    font-family:Consolas,Menlo,monospace;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-top:.4rem;
-    text-align:right;
-}
-
-/* UNTEN: Nachricht schreiben */
-footer{
-    grid-area:input;
-    background:#1a1a24cc;
-    border-top:2px solid #6b00ff;
-    box-shadow:0 -20px 60px rgba(255,77,253,.25),
-               0 0 40px rgba(0,255,246,.25),
-               0 0 120px rgba(107,0,255,.4);
-    padding:.75rem;
-    display:grid;
-    grid-template-columns:1fr auto;
-    gap:.5rem;
-    align-items:flex-start;
-}
-#msgInput{
-    width:100%;
-    height:60px;
-    resize:none;
-    background:#2a2a38;
-    color:#fff;
-    border:2px solid #6b00ff;
-    border-radius:8px;
-    font-size:.8rem;
-    line-height:1.3;
-    font-family:Consolas,Menlo,monospace;
-    padding:.6rem .7rem;
-    box-shadow:inset 0 0 12px rgba(0,0,0,.6),
-               0 0 20px rgba(107,0,255,.5);
-    outline:none;
-}
-#sendBtn{
-    background:radial-gradient(circle at 20% 20%, #00fff6 0%, #003d3d 60%);
-    border:0;
-    border-radius:10px;
-    color:#00fff6;
-    text-shadow:0 0 8px #00fff6,0 0 12px #ff4dfd;
-    font-size:.8rem;
-    font-weight:700;
-    line-height:1.2;
-    padding:.6rem .8rem;
-    cursor:pointer;
-    box-shadow:0 12px 30px rgba(0,255,246,.4),
-               0 0 20px rgba(255,77,253,.4),
-               0 0 60px rgba(107,0,255,.6);
-    min-width:120px;
-}
-#sendBtn:disabled{
-    opacity:.4;
-    cursor:not-allowed;
-}
-
-/* Hilfe-Box unter Registrierung */
-#helpBox{
-    border:1px solid #6b00ff;
-    border-radius:8px;
-    background:#1a1a24;
-    box-shadow:0 0 16px rgba(107,0,255,.4),
-               0 0 32px rgba(0,255,246,.2);
-    padding:.5rem .6rem;
-    font-size:.7rem;
-    line-height:1.4;
-    color:#fff;
-    white-space:pre-wrap;
-}
-#helpBoxTitle{
-    font-weight:600;
-    color:#ff4dfd;
-    text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6;
-    margin-bottom:.4rem;
-    font-size:.7rem;
-}
-</style>
-</head>
-<body>
-
-<div id="clockTop">--:--</div>
-
-<header>
-    <div class="big">DeepButterfly Realm 💜👑</div>
-    <div class="sub">Multilingual · Owner-Krone · Farben · Avatare · Raum 🦋 · Moderation</div>
-</header>
-
-<aside id="asideBox">
-    <div class="block">
-        <h2>Login</h2>
-        <label for="loginUser">Benutzername</label>
-        <input id="loginUser" type="text" placeholder="z.B. DeepButterflyMusic" />
-        <label for="loginPass">Passwort</label>
-        <input id="loginPass" type="password" placeholder="••••••" />
-        <button class="btn" id="loginBtn">Einloggen</button>
-        <div class="statusLine" id="loginStatus"></div>
-    </div>
-
-    <div class="block">
-        <h2>Registrieren</h2>
-
-        <label for="helpLangSelect">Hilfe-Sprache / Segítség nyelve</label>
-        <select id="helpLangSelect">
-            <option value="de">Deutsch</option>
-            <option value="hu">Magyar (Ungarisch)</option>
-        </select>
-
-        <div id="helpBox">
-            <div id="helpBoxTitle">So meldest du dich an 💜</div>
-            <div id="helpBoxText">
-1. Wähle einen Namen.
-2. Wähle ein Passwort.
-3. Wähle dein Avatar-Emoji (🦋 z.B.).
-4. Wähle deine Farbe.
-5. Sprache: Das ist, wie du Nachrichten lesen wirst.
-6. Klick "Account erstellen".
-Dann geh zu Login und melde dich damit an.
-            </div>
-        </div>
-
-        <br/>
-
-        <label for="regUser">Neuer Name</label>
-        <input id="regUser" type="text" placeholder="z.B. DarkInfernal" />
-        <label for="regPass">Passwort</label>
-        <input id="regPass" type="password" placeholder="Passwort wählen" />
-
-        <label for="regAvatar">Avatar Emoji / Symbol</label>
-        <input id="regAvatar" type="text" value="🦋" />
-
-        <label for="regColor">Name Farbe</label>
-        <input id="regColor" type="color" value="#ff4dfd" />
-
-        <label for="regLang">Sprache für Übersetzung</label>
-        <select id="regLang"></select>
-
-        <label for="regTheme">Dein Style / Theme / Schrift</label>
-        <input id="regTheme" type="text" placeholder="butterfly / fire / rose / neon ..." />
-
-        <button class="btn" id="regBtn">Account erstellen</button>
-
-        <div class="statusLine" id="regStatus"></div>
-    </div>
-
-    <div class="block">
-        <h2>Dein Profil</h2>
-        <small>Dein Avatar / Farbe / Sprache / Style kannst du selber ändern 💅</small>
-
-        <label for="profAvatar">Avatar Emoji</label>
-        <input id="profAvatar" type="text" />
-
-        <label for="profColor">Name Farbe</label>
-        <input id="profColor" type="color" value="#ffffff"/>
-
-        <label for="profLang">Deine Sprache</label>
-        <select id="profLang"></select>
-
-        <label for="profTheme">Theme / Schrift</label>
-        <input id="profTheme" type="text" placeholder="butterfly / fire / etc."/>
-
-        <button class="btn" id="saveProfileBtn">Speichern</button>
-
-        <div class="statusLine" id="profileStatus"></div>
-    </div>
-
-    <div class="block" id="moderationBlock">
-        <h2>Wer ist online?</h2>
-        <small>Tippe auf einen Namen, wenn du Owner/Admin bist → Admin machen / Kicken / Bannen</small>
-        <div id="onlineList"></div>
-    </div>
-</aside>
-
-<div id="roomWrap">
-    <div id="roomTitle">
-        <span>Butterfly Room 🦋 Alle Avatare in Echtzeit – du kannst dich hinsetzen</span>
-        <span style="color:#8a8a9f;font-size:.65rem;line-height:1.2;">
-            Zieh dich wohin du willst 💖
-        </span>
-    </div>
-    <div id="roomArea"></div>
-</div>
-
-<main>
-    <div id="messages"></div>
-</main>
-
-<footer>
-    <div style="display:flex;flex-direction:column;gap:.4rem;">
-        <textarea id="msgInput" placeholder="Schreib hier... (Enter = senden, Shift+Enter = neue Zeile)" disabled></textarea>
-        <div id="clockBottom" style="color:#ff4dfd;font-size:.65rem;font-family:Consolas,Menlo,monospace;text-shadow:0 0 8px #ff4dfd,0 0 12px #00fff6; text-align:right;">--:--:--</div>
-    </div>
-    <button id="sendBtn" disabled>Senden</button>
-</footer>
-
 <script src="/socket.io/socket.io.js"></script>
 <script>
-// ===== Spracheinstellungen =====
+/* ======== 🌍 Sprachen & Grunddaten ======== */
 const LANGS = [
-    {code:"de", name:"Deutsch"},
-    {code:"hu", name:"Magyar / Ungarisch"},
-    {code:"en", name:"English"},
-    {code:"es", name:"Español"},
-    {code:"fr", name:"Français"},
-    {code:"it", name:"Italiano"},
-    {code:"pt", name:"Português"},
-    {code:"tr", name:"Türkçe"},
-    {code:"ru", name:"Русский"},
-    {code:"ar", name:"العربية"},
-    {code:"zh", name:"中文"},
-    {code:"ja", name:"日本語"}
+  { code: "de", name: "Deutsch" },
+  { code: "hu", name: "Magyar / Ungarisch" },
+  { code: "en", name: "English" },
+  { code: "es", name: "Español" },
+  { code: "fr", name: "Français" },
+  { code: "it", name: "Italiano" },
+  { code: "pt", name: "Português" },
+  { code: "tr", name: "Türkçe" },
+  { code: "ru", name: "Русский" },
+  { code: "ar", name: "العربية" },
+  { code: "zh", name: "中文" },
+  { code: "ja", name: "日本語" }
 ];
 
-// ===== Hilfe-Texte (Deutsch/Ungarisch) =====
-const HELP_TEXT = {
-    de:{
-        title:"So meldest du dich an 💜",
-        body:
-`1. Wähle einen Namen.
-2. Wähle ein Passwort.
-3. Wähle dein Avatar-Emoji (🦋 z.B.).
-4. Wähle deine Farbe.
-5. Sprache: So liest du Nachrichten.
-6. Klick "Account erstellen".
-Dann geh zu Login und melde dich damit an.
+const SERVERS = ["/translateText"]; // nutzt deinen Server als Proxy
 
-Der ERSTE Account wird Owner 👑.
-Owner/Admin können kicken oder bannen.`
-    },
-    hu:{
-        title:"Így tudsz belépni 💜",
-        body:
-`1. Válassz nevet.
-2. Válassz jelszót.
-3. Válassz avatar emojit (pl. 🦋).
-4. Válassz névszínt.
-5. Nyelv: ezen a nyelven olvasod az üzeneteket.
-6. Kattints: "Fiók létrehozása".
+/* ======== 📦 DOM Referenzen ======== */
+const loginUser = document.getElementById("loginUser");
+const loginPass = document.getElementById("loginPass");
+const loginBtn  = document.getElementById("loginBtn");
+const loginStatus = document.getElementById("loginStatus");
+const regUser = document.getElementById("regUser");
+const regPass = document.getElementById("regPass");
+const regAvatar = document.getElementById("regAvatar");
+const regColor = document.getElementById("regColor");
+const regLang  = document.getElementById("regLang");
+const regTheme = document.getElementById("regTheme");
+const regBtn   = document.getElementById("regBtn");
+const regStatus= document.getElementById("regStatus");
+const profAvatar = document.getElementById("profAvatar");
+const profColor  = document.getElementById("profColor");
+const profLang   = document.getElementById("profLang");
+const profTheme  = document.getElementById("profTheme");
+const saveProfileBtn = document.getElementById("saveProfileBtn");
+const profileStatus  = document.getElementById("profileStatus");
+const onlineList = document.getElementById("onlineList");
+const messagesEl = document.getElementById("messages");
+const msgInput   = document.getElementById("msgInput");
+const sendBtn    = document.getElementById("sendBtn");
+const roomArea   = document.getElementById("roomArea");
 
-Az ELSŐ felhasználó lesz az Owner 👑.
-Owner / Admin ki tud rúgni vagy tiltani másokat.`
-    }
-};
+/* ======== 🔤 Sprachauswahl füllen ======== */
+function fillLangSelect(sel){
+  LANGS.forEach(l=>{
+    const o=document.createElement("option");
+    o.value=l.code;
+    o.textContent=l.name;
+    sel.appendChild(o);
+  });
+}
+fillLangSelect(regLang);
+fillLangSelect(profLang);
 
-// ===== GOOGLE TRANSLATE API =====
-// WICHTIG: Hier deinen echten Google Translate API Key eintragen!
-const GOOGLE_API_KEY = "AIzaSyCPVLOrz0B2P_k6Tr6SFMSeup0GttsGNXE";
+/* ======== 💬 Übersetzungsfunktion ======== */
+async function translateTextSmart(rawText, targetLang){
+  const key = "cache|" + targetLang + "|" + rawText;
+  const cache = sessionStorage.getItem(key);
+  if(cache) return cache;
 
-// ruft Google Translate an
-async function translateAuto(text,targetLang){
-    try{
-        const res = await fetch(
-            "https://translation.googleapis.com/language/translate/v2?key="+GOOGLE_API_KEY,
-            {
-                method:"POST",
-                headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({
-                    q:text,
-                    target:targetLang
-                })
-            }
-        );
-        const data = await res.json();
-        if(data?.data?.translations?.[0]){
-            const tObj = data.data.translations[0];
-            return {
-                translatedText: tObj.translatedText || text,
-                detectedSource: tObj.detectedSourceLanguage || "auto"
-            };
-        } else {
-            return {
-                translatedText: text,
-                detectedSource: "auto"
-            };
-        }
-    }catch(err){
-        console.error("Übersetzungsfehler:",err);
-        return {
-            translatedText: text + " (kein Übersetzer 😢)",
-            detectedSource: "auto"
-        };
-    }
+  try {
+    const res = await fetch("/translateText", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ text: rawText, target: targetLang })
+    });
+    const data = await res.json();
+    if(!data.ok) throw new Error("Fehler");
+    sessionStorage.setItem(key, data.translatedText);
+    return data.translatedText;
+  } catch(e) {
+    console.warn("Übersetzung fehlgeschlagen:", e);
+    return rawText + " (Übersetzung nicht verfügbar 😢)";
+  }
 }
 
-// ===== DOM Refs =====
-const asideEl        = document.getElementById("asideBox");
-const moderationWrap = document.getElementById("moderationBlock");
-
-const loginUser   = document.getElementById("loginUser");
-the_loginPass = document.getElementById("loginPass"); // renamed variable after copy?
-</script>
-</body>
-</html>
-<script>
-// ====== STATE ======
+/* ======== 🔐 Login / Registrierung ======== */
 let authToken = null;
 let myProfile = null;
 let dragging = null;
 let currentRoomState = {};
-let socket;
 
-// Sprache in Dropdowns laden
-function fillLangSelect(sel){
-  LANGS.forEach(l=>{
-    const opt=document.createElement("option");
-    opt.value=l.code;
-    opt.textContent=l.name;
-    sel.appendChild(opt);
-  });
-}
-fillLangSelect(document.getElementById("regLang"));
-fillLangSelect(document.getElementById("profLang"));
-
-// ====== Uhrzeit oben & unten ======
-function updateClock(){
-  const now=new Date();
-  const t=now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  document.getElementById("clockTop").textContent=t;
-  document.getElementById("clockBottom").textContent=t;
-}
-setInterval(updateClock,1000);
-updateClock();
-
-// ====== Übersetzungshilfe für Registrierung ======
-const helpLangSelect=document.getElementById("helpLangSelect");
-const helpBoxTitle=document.getElementById("helpBoxTitle");
-const helpBoxText=document.getElementById("helpBoxText");
-helpLangSelect.addEventListener("change",()=>{
-  const l=HELP_TEXT[helpLangSelect.value]||HELP_TEXT.de;
-  helpBoxTitle.textContent=l.title;
-  helpBoxText.textContent=l.body;
-});
-
-// ====== UI Helfer ======
-function setStatus(el,msg,err=false){
-  el.textContent=msg;
-  el.style.color=err?"#ff4dfd":"#8a8a9f";
+function setStatus(el, msg, isErr=false){
+  el.textContent = msg;
+  el.style.color = isErr ? "#ff4dfd" : "#8a8a9f";
 }
 
-// ====== SOCKET.IO ======
-function setupSocket(){
-  socket=io();
-
-  socket.on("chatMessage",async msg=>{
-    await addMessage(msg);
-  });
-  socket.on("userlist",arr=>{
-    if(!authToken){
-      document.getElementById("onlineList").innerHTML="<i>(Bitte einloggen)</i>";
-      asideEl.style.filter="blur(2px)";
-      return;
-    }
-    asideEl.style.filter="none";
-    renderOnlineList(arr);
-  });
-  socket.on("roomUpdate",s=>{
-    currentRoomState=s.avatars||{};
-    renderRoom();
-  });
-  socket.on("forceLogout",d=>{
-    alert(d?.reason||"Verbindung getrennt");
-    authToken=null;myProfile=null;
-    document.getElementById("msgInput").disabled=true;
-    document.getElementById("sendBtn").disabled=true;
-  });
-}
-setupSocket();
-
-// ====== CHAT ANZEIGE ======
-async function addMessage(msg){
-  const isSystem=(msg.from==="System");
-  const wrap=document.createElement("div");
+/* ======== 🪶 CHAT Nachrichten anzeigen ======== */
+async function addMessageBubble(msg){
+  const isSystem = (msg.from==="System");
+  const wrap = document.createElement("div");
   wrap.className="msgBubble"+(isSystem?" system":"");
 
   const head=document.createElement("div");
   head.className="msgHeader";
-  head.innerHTML=`<span class='avatarEmoji'>${msg.avatar||"💬"}</span>
-                  <span class='msgHeaderName' style='color:${msg.color||"#fff"}'>${msg.from}</span>
-                  ${(msg.role==="owner"||msg.role==="admin")?"<span class='msgHeaderRole'>👑</span>":""}`;
-  wrap.appendChild(head);
 
-  const info=document.createElement("div");
-  info.className="msgInfoLine";
-  info.textContent=isSystem?"Systemnachricht":"Übersetze...";
-  wrap.appendChild(info);
+  const avSpan=document.createElement("span");
+  avSpan.className="avatarEmoji";
+  avSpan.textContent=msg.avatar || "💬";
+
+  const nameSpan=document.createElement("span");
+  nameSpan.className="msgHeaderName";
+  nameSpan.textContent=msg.from;
+  if(isSystem){
+    nameSpan.style.color="#888";
+  } else if(msg.color){
+    nameSpan.style.color=msg.color;
+    nameSpan.style.textShadow=`0 0 6px ${msg.color},0 0 12px #00fff6`;
+  }
+
+  head.appendChild(avSpan);
+  head.appendChild(nameSpan);
+  if(msg.role==="owner"||msg.role==="admin"){
+    const cr=document.createElement("span");
+    cr.className="msgHeaderRole";
+    cr.textContent="👑";
+    head.appendChild(cr);
+  }
+
+  wrap.appendChild(head);
 
   const orig=document.createElement("div");
   orig.className="msgOriginal";
@@ -724,121 +128,187 @@ async function addMessage(msg){
   wrap.appendChild(orig);
 
   if(!isSystem && myProfile){
-    const t=await translateAuto(msg.text,myProfile.language||"de");
-    info.textContent="Sprache erkannt: "+t.detectedSource+" → "+(myProfile.language||"de");
-    const tr=document.createElement("div");
-    tr.className="msgTranslation";
-    tr.innerHTML=t.translatedText;
-    wrap.appendChild(tr);
+    const arr=document.createElement("div");
+    arr.className="msgArrow";
+    arr.textContent="→ übersetzt für dich:";
+    wrap.appendChild(arr);
+
+    const trans=document.createElement("div");
+    trans.className="msgTranslation";
+    trans.textContent="(übersetze ...)";
+    wrap.appendChild(trans);
+
+    const t = await translateTextSmart(msg.text, myProfile.language || "de");
+    trans.textContent=t;
   }
 
-  const time=document.createElement("div");
-  time.className="msgTime";
-  time.textContent=new Date(msg.timestamp||Date.now()).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-  wrap.appendChild(time);
-
-  document.getElementById("messages").appendChild(wrap);
-  document.getElementById("messages").scrollTop=999999;
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-// ====== ONLINE-LISTE ======
+/* ======== ⚡ Socket.IO ======== */
+const socket = io();
+
+socket.on("chatMessage",(msg)=> addMessageBubble(msg));
+socket.on("userlist",(arr)=> renderOnlineList(arr));
+socket.on("roomUpdate",(s)=>{ currentRoomState=s; renderRoom(); });
+socket.on("forceLogout",(data)=>{
+  alert(data?.reason || "Du wurdest getrennt.");
+  authToken=null; myProfile=null;
+  msgInput.disabled=true; sendBtn.disabled=true;
+});
+
+/* ======== 👑 Online-Liste ======== */
 function renderOnlineList(arr){
-  const box=document.getElementById("onlineList");
-  box.innerHTML="";
+  onlineList.innerHTML="";
   arr.forEach(u=>{
     const row=document.createElement("div");
     row.className="userRow";
-    row.innerHTML=`<div class='nameLine'><span class='avatarEmoji'>${u.avatar}</span>
-                   <span style='color:${u.color};font-weight:600;'>${u.username}</span>
-                   ${(u.role==="owner"||u.role==="admin")?"<span class='roleCrown'>👑</span>":""}</div>
-                   <div class='metaLine'>${u.language}</div>`;
-    row.onclick=()=>{
-      if(!myProfile)return;
-      if(!(myProfile.role==="owner"||myProfile.role==="admin"))return;
-      if(u.username===myProfile.username)return;
-      const c=prompt(`Aktion für ${u.username}?\n1=Mitbesitzer machen\n2=Kicken\n3=Bannen`);
-      if(c==="1")socket.emit("promoteCoOwner",{token:authToken,targetUser:u.username});
-      if(c==="2")socket.emit("kickUser",{token:authToken,targetUser:u.username});
-      if(c==="3")socket.emit("banUser",{token:authToken,targetUser:u.username});
-    };
-    box.appendChild(row);
+    row.innerHTML = `
+      <div class="nameLine">
+        <span class="avatarEmoji">${u.avatar||"⭐"}</span>
+        <span style="color:${u.color||"#fff"};font-weight:600;text-shadow:0 0 6px ${u.color||"#fff"},0 0 10px #ff4dfd;">
+          ${u.username}
+        </span>
+        ${u.role==="owner"||u.role==="admin" ? "<span class='roleCrown'>👑</span>" : ""}
+      </div>
+      <div class="metaLine">Online · Sprache: ${u.language||"?"}</div>
+    `;
+    row.addEventListener("click",()=>{
+      if(!myProfile) return;
+      const iAmMod=(myProfile.role==="owner"||myProfile.role==="admin");
+      if(!iAmMod || myProfile.username===u.username) return;
+
+      const choice = prompt(
+        "Aktion für "+u.username+"?\n"+
+        "1 = Admin machen\n"+
+        "2 = Kicken\n"+
+        "3 = Bannen\n"+
+        "Andere Taste = Abbrechen"
+      );
+      if(choice==="1"){
+        socket.emit("promoteAdmin",{token:authToken,targetUser:u.username});
+      } else if(choice==="2"){
+        socket.emit("kickUser",{token:authToken,targetUser:u.username});
+      } else if(choice==="3"){
+        socket.emit("banUser",{token:authToken,targetUser:u.username});
+      }
+    });
+    onlineList.appendChild(row);
   });
 }
 
-// ====== RAUM ======
+/* ======== 🎭 Raum rendern ======== */
 function renderRoom(){
-  const area=document.getElementById("roomArea");
-  area.innerHTML="";
-  for(const name in currentRoomState){
-    const p=currentRoomState[name];
-    const el=document.createElement("div");
-    el.className="roomAvatar";
-    el.style.left=p.x+"px";
-    el.style.top=p.y+"px";
-    el.innerHTML=`<div>${p.avatar}</div>
-                  <div class='roomName' style='color:${p.color}'>${name}${(p.role==="owner"||p.role==="admin")?"<span class='roomCrown'>👑</span>":""}</div>`;
-    if(myProfile && name===myProfile.username){
-      el.onmousedown=e=>{dragging={el,x:e.offsetX,y:e.offsetY}};
+  roomArea.innerHTML="";
+  for(const u in currentRoomState){
+    const info=currentRoomState[u];
+    const box=document.createElement("div");
+    box.className="roomAvatar";
+    box.style.left=(info.x||20)+"px";
+    box.style.top=(info.y||20)+"px";
+    box.innerHTML=`
+      <div style="text-shadow:0 0 8px ${info.color||"#fff"},0 0 12px #ff4dfd;">${info.avatar||"⭐"}</div>
+      <div class="roomName" style="color:${info.color||"#fff"};">
+        ${u}${info.role==="owner"||info.role==="admin"?"<span class='roomCrown'>👑</span>":""}
+      </div>`;
+    if(myProfile && u===myProfile.username){
+      box.addEventListener("mousedown",(ev)=>{
+        dragging={username:u,el:box,offsetX:ev.offsetX,offsetY:ev.offsetY};
+      });
+      box.addEventListener("touchstart",(ev)=>{
+        const t=ev.touches[0];
+        const rect=box.getBoundingClientRect();
+        dragging={username:u,el:box,offsetX:t.clientX-rect.left,offsetY:t.clientY-rect.top};
+      },{passive:false});
     }
-    area.appendChild(el);
+    roomArea.appendChild(box);
   }
 }
-window.onmousemove=e=>{
-  if(!dragging||!myProfile)return;
-  const area=document.getElementById("roomArea");
-  const rect=area.getBoundingClientRect();
-  const x=e.clientX-rect.left-dragging.x;
-  const y=e.clientY-rect.top-dragging.y;
-  dragging.el.style.left=x+"px";
-  dragging.el.style.top=y+"px";
-  socket.emit("moveAvatar",{token:authToken,x,y});
-};
-window.onmouseup=()=>dragging=null;
+window.addEventListener("mousemove",e=>movePointer(e.clientX,e.clientY));
+window.addEventListener("mouseup",()=>dragging=null);
+window.addEventListener("touchmove",e=>{
+  if(e.touches[0]) movePointer(e.touches[0].clientX,e.touches[0].clientY);
+},{passive:false});
+window.addEventListener("touchend",()=>dragging=null);
 
-// ====== LOGIN & REGISTER ======
-async function doLogin(){
-  const u=loginUser.value.trim();
-  const p=loginPass.value.trim();
-  setStatus(document.getElementById("loginStatus"),"Login...");
-  const res=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})});
-  const data=await res.json();
-  if(!data.ok)return setStatus(document.getElementById("loginStatus"),data.error,true);
-  authToken=data.token;myProfile=data.profile;
-  setStatus(document.getElementById("loginStatus"),`Eingeloggt als ${myProfile.username} (${myProfile.role})`);
-  document.getElementById("msgInput").disabled=false;
-  document.getElementById("sendBtn").disabled=false;
-  socket.emit("joinChat",authToken);
+function movePointer(x,y){
+  if(!dragging||!myProfile||dragging.username!==myProfile.username)return;
+  const b=roomArea.getBoundingClientRect();
+  let nx=x-b.left-dragging.offsetX, ny=y-b.top-dragging.offsetY;
+  nx=Math.max(0,Math.min(b.width-40,nx));
+  ny=Math.max(0,Math.min(b.height-40,ny));
+  dragging.el.style.left=nx+"px";
+  dragging.el.style.top=ny+"px";
+  socket.emit("moveAvatar",{token:authToken,x:nx,y:ny});
 }
-document.getElementById("loginBtn").onclick=doLogin;
 
-document.getElementById("regBtn").onclick=async()=>{
-  const b={username:regUser.value.trim(),password:regPass.value.trim(),avatar:regAvatar.value,color:regColor.value,language:regLang.value,theme:regTheme.value};
-  setStatus(regStatus,"Erstelle Account...");
-  const res=await fetch("/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
-  const d=await res.json();
-  if(!d.ok)setStatus(regStatus,d.error,true);else setStatus(regStatus,"Account erstellt 💜 Jetzt einloggen");
-};
+/* ======== 🚪 Login ======== */
+loginBtn.addEventListener("click",async()=>{
+  setStatus(loginStatus,"Logge ein ...");
+  const res=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:loginUser.value.trim(),password:loginPass.value.trim()})});
+  const data=await res.json();
+  if(!data.ok){setStatus(loginStatus,data.error,true);return;}
+  authToken=data.token; myProfile=data.profile;
+  setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
+  afterLoginUI(); socket.emit("joinChat",authToken);
+});
 
-// ====== PROFIL SPEICHERN ======
-document.getElementById("saveProfileBtn").onclick=async()=>{
-  if(!authToken)return setStatus(profileStatus,"Nicht eingeloggt",true);
-  const b={token:authToken,avatar:profAvatar.value,color:profColor.value,language:profLang.value,theme:profTheme.value};
-  const res=await fetch("/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
-  const d=await res.json();
-  if(!d.ok)setStatus(profileStatus,d.error,true);
-  else{myProfile=d.profile;setStatus(profileStatus,"Gespeichert 💜");}
-};
+/* ======== 🦋 Registrierung ======== */
+regBtn.addEventListener("click",async()=>{
+  setStatus(regStatus,"Erstelle Account ...");
+  const res=await fetch("/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    username:regUser.value.trim(),
+    password:regPass.value.trim(),
+    avatar:regAvatar.value.trim()||"🦋",
+    color:regColor.value,
+    language:regLang.value,
+    theme:regTheme.value.trim()||"default"
+  })});
+  const data=await res.json();
+  if(!data.ok){setStatus(regStatus,data.error,true);return;}
+  setStatus(regStatus,"Account erstellt! Rolle: "+data.role+" — jetzt einloggen 💜");
+});
 
-// ====== SENDEN ======
-document.getElementById("sendBtn").onclick=()=>{
-  const t=document.getElementById("msgInput").value.trim();
-  if(!t)return;
-  socket.emit("sendMessage",{token:authToken,text:t});
-  document.getElementById("msgInput").value="";
-};
-document.getElementById("msgInput").onkeydown=e=>{
-  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();document.getElementById("sendBtn").click();}
-};
+/* ======== 💾 Profil ======== */
+saveProfileBtn.addEventListener("click",async()=>{
+  if(!authToken){setStatus(profileStatus,"Bitte erst einloggen 🙃",true);return;}
+  const res=await fetch("/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    token:authToken,
+    avatar:profAvatar.value.trim(),
+    color:profColor.value,
+    language:profLang.value,
+    theme:profTheme.value.trim()
+  })});
+  const data=await res.json();
+  if(!data.ok){setStatus(profileStatus,data.error,true);return;}
+  myProfile=data.profile;
+  setStatus(profileStatus,"Gespeichert 💜 Dein Style ist jetzt aktiv.");
+});
+
+/* ======== 🖋 UI nach Login ======== */
+function afterLoginUI(){
+  msgInput.disabled=false;
+  sendBtn.disabled=false;
+  profAvatar.value=myProfile.avatar||"🦋";
+  profColor.value=myProfile.color||"#ffffff";
+  profLang.value=myProfile.language||"de";
+  profTheme.value=myProfile.theme||"default";
+}
+
+/* ======== 📩 Nachricht senden ======== */
+msgInput.addEventListener("keydown",ev=>{
+  if(ev.key==="Enter"&&!ev.shiftKey){
+    ev.preventDefault();
+    if(!sendBtn.disabled) sendBtn.click();
+  }
+});
+sendBtn.addEventListener("click",()=>{
+  if(!authToken){setStatus(loginStatus,"Bitte einloggen 💜",true);return;}
+  const txt=msgInput.value.trim(); if(!txt)return;
+  socket.emit("sendMessage",{token:authToken,text:txt});
+  msgInput.value="";
+});
 </script>
 
 
