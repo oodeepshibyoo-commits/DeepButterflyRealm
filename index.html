@@ -1,50 +1,110 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
-/* ======== 🌍 Sprachen & Grunddaten ======== */
+/* ======= STATE ======= */
+let authToken = null;
+let myProfile = null;
+
+let adminTargetUser = null;
+
+let currentRoom = {
+  avatars: {}, // { username : { x,y,avatarUrl,color,role,seatIndex:null|number } }
+  seats: [     // feste Sitz-Positionen (Client weiß wo die Stühle stehen)
+    {x:30,y:100,label:"💺"},
+    {x:90,y:100,label:"💺"},
+    {x:150,y:100,label:"💺"},
+    {x:210,y:100,label:"🛋"} // AFK Sofa
+  ]
+};
+
+let dragging = null; // { username, el, offsetX, offsetY }
+
+let currentGame = null;
+/*
+currentGame = {
+  type: "tictactoe",
+  host: "DeepButterflyMusic",
+  open: true,              // true = neue dürfen joinen
+  started: false,
+  players: ["A","B",...],
+  board: ["","","","","","","","",""], // 9 felder
+  turn: "A",               // username der dran ist
+  winner: null
+}
+*/
+
 const LANGS = [
-  { code: "de", name: "Deutsch" },
-  { code: "hu", name: "Magyar / Ungarisch" },
-  { code: "en", name: "English" },
-  { code: "es", name: "Español" },
-  { code: "fr", name: "Français" },
-  { code: "it", name: "Italiano" },
-  { code: "pt", name: "Português" },
-  { code: "tr", name: "Türkçe" },
-  { code: "ru", name: "Русский" },
-  { code: "ar", name: "العربية" },
-  { code: "zh", name: "中文" },
-  { code: "ja", name: "日本語" }
+  {code:"de", name:"Deutsch"},
+  {code:"hu", name:"Magyar / Ungarisch"},
+  {code:"en", name:"English"},
+  {code:"es", name:"Español"},
+  {code:"fr", name:"Français"},
+  {code:"it", name:"Italiano"},
+  {code:"pt", name:"Português"},
+  {code:"tr", name:"Türkçe"},
+  {code:"ru", name:"Русский"},
+  {code:"ar", name:"العربية"},
+  {code:"zh", name:"中文"},
+  {code:"ja", name:"日本語"}
 ];
 
-const SERVERS = ["/translateText"]; // nutzt deinen Server als Proxy
-
-/* ======== 📦 DOM Referenzen ======== */
+/* ======= DOM ======= */
 const loginUser = document.getElementById("loginUser");
 const loginPass = document.getElementById("loginPass");
 const loginBtn  = document.getElementById("loginBtn");
 const loginStatus = document.getElementById("loginStatus");
+
 const regUser = document.getElementById("regUser");
 const regPass = document.getElementById("regPass");
-const regAvatar = document.getElementById("regAvatar");
+const regAvatar = document.getElementById("regAvatar"); // kann Emoji sein oder leer
 const regColor = document.getElementById("regColor");
 const regLang  = document.getElementById("regLang");
 const regTheme = document.getElementById("regTheme");
 const regBtn   = document.getElementById("regBtn");
 const regStatus= document.getElementById("regStatus");
-const profAvatar = document.getElementById("profAvatar");
+
 const profColor  = document.getElementById("profColor");
 const profLang   = document.getElementById("profLang");
 const profTheme  = document.getElementById("profTheme");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const profileStatus  = document.getElementById("profileStatus");
-const onlineList = document.getElementById("onlineList");
+
 const messagesEl = document.getElementById("messages");
 const msgInput   = document.getElementById("msgInput");
 const sendBtn    = document.getElementById("sendBtn");
+
+const onlineList = document.getElementById("onlineList");
+
 const roomArea   = document.getElementById("roomArea");
 
-/* ======== 🔤 Sprachauswahl füllen ======== */
+const adminPanel = document.getElementById("adminPanel");
+const adminTargetView = document.getElementById("adminTargetView");
+const adminActionStatus = document.getElementById("adminActionStatus");
+const btnMakeOwner = document.getElementById("btnMakeOwner");
+const btnRemoveOwner = document.getElementById("btnRemoveOwner");
+const btnKick = document.getElementById("btnKick");
+const btnBan  = document.getElementById("btnBan");
+const btnUnban= document.getElementById("btnUnban");
+
+const gameWrap       = document.getElementById("gameWrap");
+const btnCreateTic   = document.getElementById("btnCreateTic");
+const btnJoinGame    = document.getElementById("btnJoinGame");
+const btnStartGame   = document.getElementById("btnStartGame");
+const gameInfoBox    = document.getElementById("gameInfoBox");
+const gamePlayersBox = document.getElementById("gamePlayersBox");
+const ticBoard       = document.getElementById("ticBoard");
+const ticCells       = document.getElementById("ticCells");
+const ticStatus      = document.getElementById("ticStatus");
+
+function setStatus(el, msg, isErr=false){
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isErr ? "#ff4dfd" : "#8a8a9f";
+}
+
+/* ======= Sprache-Auswahl in Register/Profil füllen ======= */
 function fillLangSelect(sel){
+  if(!sel) return;
+  sel.innerHTML="";
   LANGS.forEach(l=>{
     const o=document.createElement("option");
     o.value=l.code;
@@ -55,260 +115,598 @@ function fillLangSelect(sel){
 fillLangSelect(regLang);
 fillLangSelect(profLang);
 
-/* ======== 💬 Übersetzungsfunktion ======== */
+/* ======= Übersetzen (ruft deinen Server /translateText) ======= */
 async function translateTextSmart(rawText, targetLang){
-  const key = "cache|" + targetLang + "|" + rawText;
-  const cache = sessionStorage.getItem(key);
-  if(cache) return cache;
-
   try {
-    const res = await fetch("/translateText", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({ text: rawText, target: targetLang })
+    const r = await fetch("/translateText", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ text: rawText, target: targetLang })
     });
-    const data = await res.json();
-    if(!data.ok) throw new Error("Fehler");
-    sessionStorage.setItem(key, data.translatedText);
-    return data.translatedText;
-  } catch(e) {
-    console.warn("Übersetzung fehlgeschlagen:", e);
-    return rawText + " (Übersetzung nicht verfügbar 😢)";
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error||"fail");
+    return { text:data.translatedText, from:data.detectedSource||"auto" };
+  } catch(e){
+    return { text:"(konnte nicht übersetzen 😢)\n"+rawText, from:"?" };
   }
 }
 
-/* ======== 🔐 Login / Registrierung ======== */
-let authToken = null;
-let myProfile = null;
-let dragging = null;
-let currentRoomState = {};
-
-function setStatus(el, msg, isErr=false){
-  el.textContent = msg;
-  el.style.color = isErr ? "#ff4dfd" : "#8a8a9f";
-}
-
-/* ======== 🪶 CHAT Nachrichten anzeigen ======== */
+/* ======= Chat Nachricht zeichnen ======= */
 async function addMessageBubble(msg){
+  // msg: {from, text, color, role, avatarUrl?, timestamp?}
   const isSystem = (msg.from==="System");
+
   const wrap = document.createElement("div");
-  wrap.className="msgBubble"+(isSystem?" system":"");
+  wrap.className = "msgBubble" + (isSystem?" system": "");
 
   const head=document.createElement("div");
   head.className="msgHeader";
 
-  const avSpan=document.createElement("span");
-  avSpan.className="avatarEmoji";
-  avSpan.textContent=msg.avatar || "💬";
+  // Avatar: Bild oder Emoji
+  const av=document.createElement("span");
+  av.className="avatarEmoji";
+  if(msg.avatarUrl && msg.avatarUrl.startsWith("http")){
+    const img=document.createElement("img");
+    img.src=msg.avatarUrl;
+    img.style.width="28px";
+    img.style.height="28px";
+    img.style.borderRadius="6px";
+    img.style.objectFit="cover";
+    av.appendChild(img);
+  }else{
+    av.textContent="💬";
+  }
 
   const nameSpan=document.createElement("span");
   nameSpan.className="msgHeaderName";
   nameSpan.textContent=msg.from;
   if(isSystem){
     nameSpan.style.color="#888";
-  } else if(msg.color){
+    nameSpan.style.textShadow="none";
+  }else if(msg.color){
     nameSpan.style.color=msg.color;
     nameSpan.style.textShadow=`0 0 6px ${msg.color},0 0 12px #00fff6`;
   }
 
-  head.appendChild(avSpan);
+  head.appendChild(av);
   head.appendChild(nameSpan);
-  if(msg.role==="owner"||msg.role==="admin"){
-    const cr=document.createElement("span");
-    cr.className="msgHeaderRole";
-    cr.textContent="👑";
-    head.appendChild(cr);
+
+  if(msg.role==="owner"||msg.role==="coOwner"||msg.role==="admin"){
+    const crown=document.createElement("span");
+    crown.className="msgHeaderRole";
+    crown.textContent="👑";
+    head.appendChild(crown);
   }
 
   wrap.appendChild(head);
 
+  // Original
   const orig=document.createElement("div");
   orig.className="msgOriginal";
   orig.textContent=msg.text;
   wrap.appendChild(orig);
 
+  // Übersetzung nur bei normalen Nachrichten
   if(!isSystem && myProfile){
-    const arr=document.createElement("div");
-    arr.className="msgArrow";
-    arr.textContent="→ übersetzt für dich:";
-    wrap.appendChild(arr);
+    const info=document.createElement("div");
+    info.className="msgArrow";
+    info.textContent="→ übersetzt für dich:";
+    wrap.appendChild(info);
 
-    const trans=document.createElement("div");
-    trans.className="msgTranslation";
-    trans.textContent="(übersetze ...)";
-    wrap.appendChild(trans);
+    const transDiv=document.createElement("div");
+    transDiv.className="msgTranslation";
+    transDiv.textContent="(übersetze ...)";
+    wrap.appendChild(transDiv);
 
     const t = await translateTextSmart(msg.text, myProfile.language || "de");
-    trans.textContent=t;
+    transDiv.textContent = t.text;
   }
 
   messagesEl.appendChild(wrap);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-/* ======== ⚡ Socket.IO ======== */
-const socket = io();
-
-socket.on("chatMessage",(msg)=> addMessageBubble(msg));
-socket.on("userlist",(arr)=> renderOnlineList(arr));
-socket.on("roomUpdate",(s)=>{ currentRoomState=s; renderRoom(); });
-socket.on("forceLogout",(data)=>{
-  alert(data?.reason || "Du wurdest getrennt.");
-  authToken=null; myProfile=null;
-  msgInput.disabled=true; sendBtn.disabled=true;
-});
-
-/* ======== 👑 Online-Liste ======== */
+/* ======= ONLINE LISTE + Admin-Ziel auswählen ======= */
 function renderOnlineList(arr){
   onlineList.innerHTML="";
   arr.forEach(u=>{
     const row=document.createElement("div");
     row.className="userRow";
+
+    // Avatar in Liste als Bild wenn da
+    const avatarSide = u.avatarUrl && u.avatarUrl.startsWith("http")
+      ? `<img src="${u.avatarUrl}" style="width:24px;height:24px;border-radius:6px;object-fit:cover;box-shadow:0 0 8px #ff4dfd;">`
+      : `<span class="avatarEmoji">💖</span>`;
+
     row.innerHTML = `
-      <div class="nameLine">
-        <span class="avatarEmoji">${u.avatar||"⭐"}</span>
+      <div class="nameLine" style="gap:.4rem;display:flex;align-items:center;flex-wrap:wrap;">
+        ${avatarSide}
         <span style="color:${u.color||"#fff"};font-weight:600;text-shadow:0 0 6px ${u.color||"#fff"},0 0 10px #ff4dfd;">
           ${u.username}
         </span>
-        ${u.role==="owner"||u.role==="admin" ? "<span class='roleCrown'>👑</span>" : ""}
+        ${ (u.role==="owner"||u.role==="coOwner"||u.role==="admin") ? `<span class="roleCrown">👑</span>` : "" }
       </div>
-      <div class="metaLine">Online · Sprache: ${u.language||"?"}</div>
+      <div class="metaLine">Sprache: ${u.language||"?"}</div>
     `;
-    row.addEventListener("click",()=>{
-      if(!myProfile) return;
-      const iAmMod=(myProfile.role==="owner"||myProfile.role==="admin");
-      if(!iAmMod || myProfile.username===u.username) return;
 
-      const choice = prompt(
-        "Aktion für "+u.username+"?\n"+
-        "1 = Admin machen\n"+
-        "2 = Kicken\n"+
-        "3 = Bannen\n"+
-        "Andere Taste = Abbrechen"
-      );
-      if(choice==="1"){
-        socket.emit("promoteAdmin",{token:authToken,targetUser:u.username});
-      } else if(choice==="2"){
-        socket.emit("kickUser",{token:authToken,targetUser:u.username});
-      } else if(choice==="3"){
-        socket.emit("banUser",{token:authToken,targetUser:u.username});
-      }
+    // Klick -> Admin Ziel auswählen
+    row.addEventListener("click", ()=>{
+      if(!myProfile) return;
+      // darf ich moderieren?
+      if(!(myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin")) return;
+
+      adminTargetUser = u.username;
+      adminTargetView.textContent = "Ziel: " + u.username;
+      adminPanel.style.display = "block";
     });
+
     onlineList.appendChild(row);
   });
 }
 
-/* ======== 🎭 Raum rendern ======== */
+/* ======= RAUM RENDERN ======= */
 function renderRoom(){
   roomArea.innerHTML="";
-  for(const u in currentRoomState){
-    const info=currentRoomState[u];
+
+  // zeichne sitzplätze
+  currentRoom.seats.forEach((seat,idx)=>{
+    const seatDiv=document.createElement("div");
+    seatDiv.className="seatSpot";
+    seatDiv.style.position="absolute";
+    seatDiv.style.left=seat.x+"px";
+    seatDiv.style.top=seat.y+"px";
+    seatDiv.style.width="32px";
+    seatDiv.style.height="24px";
+    seatDiv.style.border="2px solid #00fff6";
+    seatDiv.style.borderRadius="6px";
+    seatDiv.style.background="#00222288";
+    seatDiv.style.boxShadow="0 0 10px #00fff6,0 0 20px #ff4dfd";
+    seatDiv.style.fontSize=".7rem";
+    seatDiv.style.lineHeight="24px";
+    seatDiv.style.textAlign="center";
+    seatDiv.style.color="#00fff6";
+    seatDiv.style.cursor="pointer";
+    seatDiv.textContent=seat.label;
+
+    seatDiv.addEventListener("click",()=>{
+      if(!authToken || !myProfile) return;
+      socket.emit("sitOnSeat",{
+        token: authToken,
+        seatIndex: idx
+      });
+    });
+
+    roomArea.appendChild(seatDiv);
+  });
+
+  // zeichne avatare
+  for(const uname in currentRoom.avatars){
+    const info=currentRoom.avatars[uname];
     const box=document.createElement("div");
     box.className="roomAvatar";
-    box.style.left=(info.x||20)+"px";
-    box.style.top=(info.y||20)+"px";
-    box.innerHTML=`
-      <div style="text-shadow:0 0 8px ${info.color||"#fff"},0 0 12px #ff4dfd;">${info.avatar||"⭐"}</div>
-      <div class="roomName" style="color:${info.color||"#fff"};">
-        ${u}${info.role==="owner"||info.role==="admin"?"<span class='roomCrown'>👑</span>":""}
-      </div>`;
-    if(myProfile && u===myProfile.username){
+    box.style.position="absolute";
+    box.style.left = (info.x||20)+"px";
+    box.style.top  = (info.y||20)+"px";
+    box.style.cursor = "grab";
+    box.style.userSelect="none";
+    box.style.fontWeight="600";
+    box.style.textAlign="center";
+    box.style.minWidth="32px";
+
+    // avatar bild/gif
+    const face=document.createElement("div");
+    if(info.avatarUrl && info.avatarUrl.startsWith("http")){
+      const img=document.createElement("img");
+      img.src=info.avatarUrl;
+      img.style.width="32px";
+      img.style.height="32px";
+      img.style.borderRadius="8px";
+      img.style.objectFit="cover";
+      img.style.boxShadow="0 0 8px #fff,0 0 12px #ff4dfd";
+      face.appendChild(img);
+    }else{
+      face.textContent="🦋";
+      face.style.textShadow="0 0 8px #fff,0 0 12px #ff4dfd";
+      face.style.fontSize="1.4rem";
+      face.style.lineHeight="1.4rem";
+    }
+
+    const nameLine=document.createElement("div");
+    nameLine.className="roomName";
+    nameLine.style.fontSize=".6rem";
+    nameLine.style.marginTop=".25rem";
+    nameLine.style.color = info.color||"#fff";
+    nameLine.style.textShadow=`0 0 6px ${info.color||"#fff"},0 0 10px #00fff6`;
+    nameLine.textContent = uname;
+    if(info.role==="owner"||info.role==="coOwner"||info.role==="admin"){
+      const cr=document.createElement("span");
+      cr.textContent="👑";
+      cr.style.color="#ffd93b";
+      cr.style.marginLeft=".25rem";
+      cr.style.textShadow="0 0 6px #ffd93b,0 0 12px #ff4dfd";
+      nameLine.appendChild(cr);
+    }
+
+    box.appendChild(face);
+    box.appendChild(nameLine);
+
+    // nur mein avatar darf ich ziehen wenn ich NICHT sitze
+    if(myProfile && uname===myProfile.username && (info.seatIndex===null || info.seatIndex===undefined)){
       box.addEventListener("mousedown",(ev)=>{
-        dragging={username:u,el:box,offsetX:ev.offsetX,offsetY:ev.offsetY};
+        dragging={
+          username:uname,
+          el:box,
+          offsetX: ev.offsetX,
+          offsetY: ev.offsetY
+        };
       });
       box.addEventListener("touchstart",(ev)=>{
         const t=ev.touches[0];
         const rect=box.getBoundingClientRect();
-        dragging={username:u,el:box,offsetX:t.clientX-rect.left,offsetY:t.clientY-rect.top};
+        dragging={
+          username:uname,
+          el:box,
+          offsetX: t.clientX-rect.left,
+          offsetY: t.clientY-rect.top
+        };
       },{passive:false});
     }
+
     roomArea.appendChild(box);
   }
 }
-window.addEventListener("mousemove",e=>movePointer(e.clientX,e.clientY));
-window.addEventListener("mouseup",()=>dragging=null);
-window.addEventListener("touchmove",e=>{
-  if(e.touches[0]) movePointer(e.touches[0].clientX,e.touches[0].clientY);
-},{passive:false});
-window.addEventListener("touchend",()=>dragging=null);
 
-function movePointer(x,y){
-  if(!dragging||!myProfile||dragging.username!==myProfile.username)return;
-  const b=roomArea.getBoundingClientRect();
-  let nx=x-b.left-dragging.offsetX, ny=y-b.top-dragging.offsetY;
-  nx=Math.max(0,Math.min(b.width-40,nx));
-  ny=Math.max(0,Math.min(b.height-40,ny));
+// Maus/Finger bewegen
+function onMovePointer(clientX, clientY){
+  if(!dragging || !myProfile) return;
+  if(dragging.username !== myProfile.username) return;
+
+  const bounds=roomArea.getBoundingClientRect();
+  let nx=clientX-bounds.left-dragging.offsetX;
+  let ny=clientY-bounds.top -dragging.offsetY;
+
+  if(nx<0) nx=0;
+  if(ny<0) ny=0;
+  if(nx>bounds.width-40) nx=bounds.width-40;
+  if(ny>bounds.height-40) ny=bounds.height-40;
+
   dragging.el.style.left=nx+"px";
-  dragging.el.style.top=ny+"px";
-  socket.emit("moveAvatar",{token:authToken,x:nx,y:ny});
+  dragging.el.style.top =ny+"px";
+
+  socket.emit("moveAvatar",{
+    token: authToken,
+    x:nx,
+    y:ny
+  });
 }
 
-/* ======== 🚪 Login ======== */
-loginBtn.addEventListener("click",async()=>{
-  setStatus(loginStatus,"Logge ein ...");
-  const res=await fetch("/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:loginUser.value.trim(),password:loginPass.value.trim()})});
-  const data=await res.json();
-  if(!data.ok){setStatus(loginStatus,data.error,true);return;}
-  authToken=data.token; myProfile=data.profile;
-  setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
-  afterLoginUI(); socket.emit("joinChat",authToken);
-});
+window.addEventListener("mousemove",(ev)=>onMovePointer(ev.clientX,ev.clientY));
+window.addEventListener("touchmove",(ev)=>{
+  if(ev.touches && ev.touches[0]){
+    onMovePointer(ev.touches[0].clientX, ev.touches[0].clientY);
+  }
+},{passive:false});
+window.addEventListener("mouseup",()=>{dragging=null;});
+window.addEventListener("touchend",()=>{dragging=null;});
 
-/* ======== 🦋 Registrierung ======== */
-regBtn.addEventListener("click",async()=>{
-  setStatus(regStatus,"Erstelle Account ...");
-  const res=await fetch("/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    username:regUser.value.trim(),
-    password:regPass.value.trim(),
-    avatar:regAvatar.value.trim()||"🦋",
-    color:regColor.value,
-    language:regLang.value,
-    theme:regTheme.value.trim()||"default"
-  })});
-  const data=await res.json();
-  if(!data.ok){setStatus(regStatus,data.error,true);return;}
-  setStatus(regStatus,"Account erstellt! Rolle: "+data.role+" — jetzt einloggen 💜");
-});
+/* ======= Spiel-UI ======= */
+function renderGameUI(){
+  if(!currentGame){
+    gameInfoBox.textContent="Kein Spiel aktiv";
+    gamePlayersBox.innerHTML="";
+    ticBoard.style.display="none";
+    return;
+  }
 
-/* ======== 💾 Profil ======== */
-saveProfileBtn.addEventListener("click",async()=>{
-  if(!authToken){setStatus(profileStatus,"Bitte erst einloggen 🙃",true);return;}
-  const res=await fetch("/profile",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    token:authToken,
-    avatar:profAvatar.value.trim(),
-    color:profColor.value,
-    language:profLang.value,
-    theme:profTheme.value.trim()
-  })});
-  const data=await res.json();
-  if(!data.ok){setStatus(profileStatus,data.error,true);return;}
-  myProfile=data.profile;
-  setStatus(profileStatus,"Gespeichert 💜 Dein Style ist jetzt aktiv.");
-});
+  // Info Box
+  const statusTxt = [
+    "Spiel: "+currentGame.type,
+    "Host: "+currentGame.host,
+    "Status: "+(currentGame.open?"Offen für Mitspieler 💖":"Geschlossen"),
+    currentGame.started ? "Gestartet ✅" : "Noch nicht gestartet ⏳"
+  ].join("\n");
 
-/* ======== 🖋 UI nach Login ======== */
-function afterLoginUI(){
-  msgInput.disabled=false;
-  sendBtn.disabled=false;
-  profAvatar.value=myProfile.avatar||"🦋";
-  profColor.value=myProfile.color||"#ffffff";
-  profLang.value=myProfile.language||"de";
-  profTheme.value=myProfile.theme||"default";
+  gameInfoBox.textContent=statusTxt;
+
+  // Players
+  gamePlayersBox.innerHTML="";
+  (currentGame.players||[]).forEach(u=>{
+    const tag=document.createElement("div");
+    tag.style.display="inline-block";
+    tag.style.background="#2a2a38";
+    tag.style.border="2px solid #6b00ff";
+    tag.style.borderRadius="8px";
+    tag.style.padding=".3rem .4rem";
+    tag.style.margin=".2rem";
+    tag.style.boxShadow="0 0 12px rgba(107,0,255,.6),0 0 24px rgba(0,255,246,.4)";
+    tag.style.fontSize=".7rem";
+    tag.style.fontWeight="600";
+    tag.textContent=u;
+    gamePlayersBox.appendChild(tag);
+  });
+
+  // TicTacToe Board rendern wenn type == tictactoe und started
+  if(currentGame.type==="tictactoe" && currentGame.started){
+    ticBoard.style.display="block";
+    ticCells.innerHTML="";
+    currentGame.board.forEach((cellVal,idx)=>{
+      const cell=document.createElement("div");
+      cell.style.width="60px";
+      cell.style.height="60px";
+      cell.style.border="2px solid #6b00ff";
+      cell.style.borderRadius="8px";
+      cell.style.display="flex";
+      cell.style.alignItems="center";
+      cell.style.justifyContent="center";
+      cell.style.fontSize="1.5rem";
+      cell.style.fontWeight="700";
+      cell.style.boxShadow="0 0 20px rgba(107,0,255,.4),0 0 40px rgba(0,255,246,.2)";
+      cell.style.cursor="pointer";
+      cell.textContent = cellVal || "";
+      cell.addEventListener("click",()=>{
+        // Zug machen
+        if(!authToken || !myProfile) return;
+        socket.emit("gameMove",{
+          token:authToken,
+          index:idx
+        });
+      });
+      ticCells.appendChild(cell);
+    });
+
+    if(currentGame.winner){
+      ticStatus.textContent = "Gewonnen hat: "+currentGame.winner+" 🎉";
+    }else{
+      ticStatus.textContent = "Am Zug: "+currentGame.turn;
+    }
+  }else{
+    ticBoard.style.display="none";
+  }
+
+  // Buttons aktivieren/deaktivieren
+  if(!authToken || !myProfile){
+    btnJoinGame.disabled = true;
+    btnStartGame.disabled = true;
+    return;
+  }
+
+  // create game darf jeder mit Rolle owner/admin/coOwner oder einfach jeder? -> wir erlauben Owner/Admin/CoOwner
+  // (clientseitig grau machen; Server prüft trotzdem)
+  const iAmHost = (myProfile.username===currentGame.host);
+  const iAmMod  = (myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin");
+
+  btnJoinGame.disabled = !currentGame.open;
+  btnStartGame.disabled = !(iAmHost || iAmMod);
 }
 
-/* ======== 📩 Nachricht senden ======== */
-msgInput.addEventListener("keydown",ev=>{
-  if(ev.key==="Enter"&&!ev.shiftKey){
-    ev.preventDefault();
-    if(!sendBtn.disabled) sendBtn.click();
+/* ======= SOCKET.IO ======= */
+const socket = io();
+
+socket.on("chatMessage",(msg)=>{
+  addMessageBubble(msg);
+});
+
+socket.on("userlist",(arr)=>{
+  renderOnlineList(arr);
+
+  // AdminPanel nur anzeigen wenn ich Mod bin
+  if(myProfile && (myProfile.role==="owner"||myProfile.role==="coOwner"||myProfile.role==="admin")){
+    adminPanel.style.display="block";
+  }else{
+    adminPanel.style.display="none";
   }
 });
-sendBtn.addEventListener("click",()=>{
-  if(!authToken){setStatus(loginStatus,"Bitte einloggen 💜",true);return;}
-  const txt=msgInput.value.trim(); if(!txt)return;
-  socket.emit("sendMessage",{token:authToken,text:txt});
+
+socket.on("roomUpdate",(st)=>{
+  // st = { avatars:{username:{x,y,avatarUrl,color,role,seatIndex}}, seats:[...] }
+  currentRoom = st;
+  renderRoom();
+});
+
+socket.on("gameState",(g)=>{
+  currentGame = g;
+  renderGameUI();
+});
+
+socket.on("forceLogout",(data)=>{
+  alert(data?.reason || "Du wurdest getrennt.");
+  authToken=null;
+  myProfile=null;
+  msgInput.disabled=true;
+  sendBtn.disabled=true;
+  adminPanel.style.display="none";
+});
+
+/* ======= LOGIN / REGISTER / PROFILE ======= */
+loginBtn.addEventListener("click", async ()=>{
+  setStatus(loginStatus,"Logge ein ...");
+  try{
+    const res=await fetch("/login",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        username: loginUser.value.trim(),
+        password: loginPass.value.trim()
+      })
+    });
+    const data=await res.json();
+    if(!data.ok){
+      setStatus(loginStatus,data.error,true);
+      return;
+    }
+    authToken=data.token;
+    myProfile=data.profile;
+    setStatus(loginStatus,"Eingeloggt als "+myProfile.username+" ("+myProfile.role+")");
+
+    // Felder ins Profil übernehmen
+    profColor.value  = myProfile.color || "#ffffff";
+    profLang.value   = myProfile.language || "de";
+    profTheme.value  = myProfile.theme || "default";
+
+    msgInput.disabled=false;
+    sendBtn.disabled=false;
+
+    // jetzt dem Server sagen "ich bin online"
+    socket.emit("joinChat", authToken);
+  }catch(e){
+    setStatus(loginStatus,"Netzwerk-Fehler",true);
+  }
+});
+
+regBtn.addEventListener("click", async ()=>{
+  setStatus(regStatus,"Erstelle Account ...");
+  try{
+    const res=await fetch("/register",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        username: regUser.value.trim(),
+        password: regPass.value.trim(),
+        avatarUrl: regAvatar.value.trim(), // jetzt URL möglich
+        color:    regColor.value,
+        language: regLang.value,
+        theme:    regTheme.value.trim() || "default"
+      })
+    });
+    const data=await res.json();
+    if(!data.ok){
+      setStatus(regStatus,data.error,true);
+      return;
+    }
+    setStatus(regStatus,"Account erstellt!\nRolle: "+data.role+"\nJetzt einloggen 💜");
+  }catch(e){
+    setStatus(regStatus,"Netzwerk-Fehler",true);
+  }
+});
+
+saveProfileBtn.addEventListener("click", async ()=>{
+  if(!authToken){
+    setStatus(profileStatus,"Bitte erst einloggen 🙃",true);
+    return;
+  }
+  setStatus(profileStatus,"Speichere...");
+  try{
+    const res=await fetch("/profile",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        token: authToken,
+        color:  profColor.value,
+        language: profLang.value,
+        theme: profTheme.value.trim()
+      })
+    });
+    const data=await res.json();
+    if(!data.ok){
+        setStatus(profileStatus,data.error,true);
+        return;
+    }
+    myProfile=data.profile;
+    setStatus(profileStatus,"Gespeichert 💜 Dein Style ist jetzt aktiv.");
+  }catch(e){
+    setStatus(profileStatus,"Netzwerk-Fehler",true);
+  }
+});
+
+/* ======= CHAT SEND ======= */
+msgInput.addEventListener("keydown",(ev)=>{
+  if(ev.key==="Enter"&&!ev.shiftKey){
+    ev.preventDefault();
+    if(!sendBtn.disabled){
+      sendBtn.click();
+    }
+  }
+});
+sendBtn.addEventListener("click", ()=>{
+  if(!authToken){
+    setStatus(loginStatus,"Bitte erst einloggen 💜",true);
+    return;
+  }
+  let txt = msgInput.value.trim();
+  if(!txt) return;
+  socket.emit("sendMessage",{ token:authToken, text:txt });
   msgInput.value="";
+  msgInput.focus();
+});
+
+/* ======= ADMIN BUTTONS ======= */
+function adminStatus(msg, err=false){
+  setStatus(adminActionStatus,msg,err);
+}
+btnMakeOwner.addEventListener("click", ()=>{
+  if(!adminTargetUser){ adminStatus("Kein Ziel",true); return; }
+  socket.emit("adminAction",{
+    token:authToken,
+    action:"makeOwner",
+    targetUser:adminTargetUser
+  });
+});
+btnRemoveOwner.addEventListener("click", ()=>{
+  if(!adminTargetUser){ adminStatus("Kein Ziel",true); return; }
+  socket.emit("adminAction",{
+    token:authToken,
+    action:"removeOwner",
+    targetUser:adminTargetUser
+  });
+});
+btnKick.addEventListener("click", ()=>{
+  if(!adminTargetUser){ adminStatus("Kein Ziel",true); return; }
+  socket.emit("adminAction",{
+    token:authToken,
+    action:"kick",
+    targetUser:adminTargetUser
+  });
+});
+btnBan.addEventListener("click", ()=>{
+  if(!adminTargetUser){ adminStatus("Kein Ziel",true); return; }
+  socket.emit("adminAction",{
+    token:authToken,
+    action:"ban",
+    targetUser:adminTargetUser
+  });
+});
+btnUnban.addEventListener("click", ()=>{
+  if(!adminTargetUser){ adminStatus("Kein Ziel",true); return; }
+  socket.emit("adminAction",{
+    token:authToken,
+    action:"unban",
+    targetUser:adminTargetUser
+  });
+});
+
+// Server kann dir zurückschreiben ob Aktion ok war:
+socket.on("adminResult",(data)=>{
+  // data = {ok:boolean,msg:string}
+  adminStatus(data.msg,!data.ok);
+});
+
+/* ======= SPIELE ======= */
+btnCreateTic.addEventListener("click", ()=>{
+  if(!authToken||!myProfile) return;
+  socket.emit("gameCreate",{
+    token:authToken,
+    type:"tictactoe"
+  });
+});
+btnJoinGame.addEventListener("click", ()=>{
+  if(!authToken||!myProfile) return;
+  socket.emit("gameJoin",{
+    token:authToken
+  });
+});
+btnStartGame.addEventListener("click", ()=>{
+  if(!authToken||!myProfile) return;
+  socket.emit("gameLock",{
+    token:authToken
+  });
+});
+
+/* ======= SERVER WIRD ZÜGE MELDEN ======= */
+socket.on("gameState",(g)=>{
+  currentGame = g;
+  renderGameUI();
 });
 </script>
+
 
 
